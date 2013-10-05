@@ -1,28 +1,25 @@
-# $Id: Makefile,v 1.3 2013-09-23 14:39:10-07 - - $
+# Author: Paul Scherer, pscherer@ucsc.edu
 
 GPP   = g++ -g -O0 -Wall -Wextra -std=gnu++0x
 GRIND = valgrind --leak-check=full --show-reachable=yes
 
 
-all : teststring
+all : oc
 
-teststring : main.o stringset.o
-	${GPP} main.o stringset.o -o teststring
+oc : main.o stringset.o
+	${GPP} main.o stringset.o -o oc
 
 %.o : %.cc
 	${GPP} -c $<
 
-ci :
-	cid + Makefile stringset.h stringset.cc main.cc
-
 spotless : clean
-	- rm teststring Listing.ps Listing.pdf \
+	- rm oc cpp_output
 
 clean :
 	-rm stringset.o main.o
 
-test.out : teststring
-	${GRIND} teststring * * * >test.out 2>&1
+test.out : oc
+	${GRIND} oc 01-hello.oc >test.out 2>&1
 
 lis : test.out
 	mkpspdf Listing.ps stringset.h stringset.cc main.cc \
