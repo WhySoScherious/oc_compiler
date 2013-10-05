@@ -4,6 +4,7 @@
 using namespace std;
 
 #include <assert.h>
+#include <libgen.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,7 +16,24 @@ int main (int argc, char **argv) {
    string dvalue = "";
    int lflag = 0;
    int yflag = 0;
+
    int c;
+   size_t period_pos;
+
+   int pathindex = argc - 1;
+   string path = argv[pathindex];
+
+   period_pos = path.find_last_of (".");
+   if (period_pos == string::npos) {
+      fprintf (stderr, "Must pass .oc file.\n");
+      exit (EXIT_FAILURE);
+   }
+
+   string file_type = path.substr(period_pos + 1);
+   if (file_type.compare ("oc") != 0) {
+      fprintf (stderr, "Invalid file type '.%s'.\n", file_type.c_str());
+      exit (EXIT_FAILURE);
+   }
 
    while ((c = getopt (argc, argv, "@:D:ly")) != -1) {
       switch (c) {
@@ -38,7 +56,7 @@ int main (int argc, char **argv) {
                fprintf (stderr, "Unknown option '-%c'.\n", optopt);
             return 1;
          default:
-            abort ();
+            exit (EXIT_FAILURE);
       }
    }
 
