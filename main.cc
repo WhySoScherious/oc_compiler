@@ -11,14 +11,13 @@ using namespace std;
 
 #include "stringset.h"
 
-int main (int argc, char **argv) {
-   string at_value = "";
-   string dvalue = "";
-   int lflag = 0;
-   int yflag = 0;
+const size_t LINESIZE = 1024;
 
-   int c;
+int main (int argc, char **argv) {
+   string cpp_filename = "cpp_output";
    size_t period_pos;
+   string delim = "\\ \t\n";
+   char *token;
 
    int pathindex = argc - 1;
    string path = argv[pathindex];
@@ -35,6 +34,21 @@ int main (int argc, char **argv) {
       exit (EXIT_FAILURE);
    }
 
+   FILE *oc_file;
+   oc_file = fopen (path.c_str(), "r");
+
+   if (oc_file == NULL) {
+      fprintf (stderr, "Cannot access '%s': No such file or"
+            "directory.\n", path.c_str());
+      exit (EXIT_FAILURE);
+   }
+
+   string at_value = "";
+   string dvalue = "";
+   int lflag = 0;
+   int yflag = 0;
+
+   int c;
    while ((c = getopt (argc, argv, "@:D:ly")) != -1) {
       switch (c) {
          case '@':
@@ -51,7 +65,8 @@ int main (int argc, char **argv) {
             break;
          case '?':
             if (optopt == '@' || optopt == 'D')
-               fprintf (stderr, "Option -%c requires an argument.\n", optopt);
+               fprintf (stderr, "Option -%c requires an argument.\n",
+                     optopt);
             else
                fprintf (stderr, "Unknown option '-%c'.\n", optopt);
             return 1;
@@ -60,11 +75,29 @@ int main (int argc, char **argv) {
       }
    }
 
-   for (int i = 1; i < argc; ++i) {
-      const string* str = intern_stringset (argv[i]);
-      printf ("intern (\"%s\") returned %p->\"%s\"\n",
-              argv[i], str->c_str(), str->c_str());
+   system (("cpp " + path + " " + cpp_filename).c_str());
+   fclose (oc_file);
+
+   FILE *cpp_file;
+   cpp_file = fopen (cpp_filename.c_str(), "r");
+   if (cpp_file == NULL) {
+         fprintf (stderr, "Cannot access '%s': No such file or"
+               "directory.\n", cpp_filename.c_str());
+         exit (EXIT_FAILURE);
    }
+
+   char buffer[LINESIZE];
+
+   while (fgets (buffer, LINESIZE, cpp_file) != NULL) {
+      token = strtok (buffer, delim.c_str());
+
+      while (token != NULL) {
+         intern_stringset (token);
+         token = strtok (NULL, delim.c_str());
+      }
+   }
+
+   fclose (cpp_file);
    dump_stringset (stdout);
    return EXIT_SUCCESS;
 }
