@@ -15,13 +15,15 @@ const size_t LINESIZE = 1024;
 
 int main (int argc, char **argv) {
    string cpp_filename = "cpp_output";
+   string prog_name;
    size_t period_pos;
    string delim = "\\ \t\n";
    char *token;
 
-   int pathindex = argc - 1;
-   string path = argv[pathindex];
+   int pathindex = argc - 1;  // Index of path from arguments
+   string path = argv[pathindex];   // Path name of .oc file
 
+   // Check if a valid .oc file was passed.
    period_pos = path.find_last_of (".");
    if (period_pos == string::npos) {
       fprintf (stderr, "Must pass .oc file.\n");
@@ -34,20 +36,28 @@ int main (int argc, char **argv) {
       exit (EXIT_FAILURE);
    }
 
+   // Get program name.
+   char *cp_path = strdup (path.c_str());
+   prog_name = basename (cp_path);
+   prog_name = prog_name.substr (0, period_pos);
+   free (cp_path);
+
+   // Check if file specified exists, and open it.
    FILE *oc_file;
    oc_file = fopen (path.c_str(), "r");
-
    if (oc_file == NULL) {
       fprintf (stderr, "Cannot access '%s': No such file or"
             "directory.\n", path.c_str());
       exit (EXIT_FAILURE);
    }
 
+   // Flags for option parameters passed.
    string at_value = "";
    string dvalue = "";
    int lflag = 0;
    int yflag = 0;
 
+   // Activate flags if passed in command arguments.
    int c;
    while ((c = getopt (argc, argv, "@:D:ly")) != -1) {
       switch (c) {
@@ -75,9 +85,16 @@ int main (int argc, char **argv) {
       }
    }
 
-   system (("cpp " + path + " " + cpp_filename).c_str());
+   // If the -D option was passed, pass argument to cpp command, else
+   // call "cpp infile outfile".
+   if (dvalue.compare("") != 0)
+      system (("cpp -D " + dvalue + " " + path + " " +
+            cpp_filename).c_str());
+   else
+      system (("cpp " + path + " " + cpp_filename).c_str());
    fclose (oc_file);
 
+   // Check for a valid cpp output file and open it.
    FILE *cpp_file;
    cpp_file = fopen (cpp_filename.c_str(), "r");
    if (cpp_file == NULL) {
@@ -86,8 +103,9 @@ int main (int argc, char **argv) {
          exit (EXIT_FAILURE);
    }
 
+   // Read line of cpp output file and tokenize it, and insert it into
+   // the string set.
    char buffer[LINESIZE];
-
    while (fgets (buffer, LINESIZE, cpp_file) != NULL) {
       token = strtok (buffer, delim.c_str());
 
@@ -98,7 +116,12 @@ int main (int argc, char **argv) {
    }
 
    fclose (cpp_file);
-   dump_stringset (stdout);
+
+   // Create a program.str file and dump the string set into the file.
+   FILE *str_file = fopen ((prog_name + ".str").c_str(), "w");
+   dump_stringset (str_file);
+   fclose (str_file);
+
    return EXIT_SUCCESS;
 }
 
