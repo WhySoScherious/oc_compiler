@@ -15,12 +15,12 @@ const size_t LINESIZE = 1024;
 
 int main (int argc, char **argv) {
    string cpp_filename = "cpp_output";
-   string prog_name;
-   size_t period_pos;
+   string prog_name;          // Name of program passed
+   size_t period_pos;         // Index of period for file extension
    string delim = "\\ \t\n";
-   char *token;
+   char *token;               // Tokenized string
 
-   int pathindex = argc - 1;  // Index of path from arguments
+   int pathindex = argc - 1;        // Index of path from arguments
    string path = argv[pathindex];   // Path name of .oc file
 
    // Check if a valid .oc file was passed.
@@ -85,7 +85,7 @@ int main (int argc, char **argv) {
       }
    }
 
-   // If the -D option was passed, pass argument to cpp command, else
+   // If the -D option was passed, pass option for cpp command, else
    // call "cpp infile outfile".
    if (dvalue.compare("") != 0)
       system (("cpp -D " + dvalue + " " + path + " " +
@@ -103,6 +103,9 @@ int main (int argc, char **argv) {
          exit (EXIT_FAILURE);
    }
 
+   // Create a program.str file
+   FILE *str_file = fopen ((prog_name + ".str").c_str(), "w");
+
    // Read line of cpp output file and tokenize it, and insert it into
    // the string set.
    char buffer[LINESIZE];
@@ -110,15 +113,16 @@ int main (int argc, char **argv) {
       token = strtok (buffer, delim.c_str());
 
       while (token != NULL) {
-         intern_stringset (token);
+         const string* str = intern_stringset (token);
+         fprintf (str_file, "intern (\"%s\") returned %p->\"%s\"\n",
+                       token, str->c_str(), str->c_str());
          token = strtok (NULL, delim.c_str());
       }
    }
 
    fclose (cpp_file);
 
-   // Create a program.str file and dump the string set into the file.
-   FILE *str_file = fopen ((prog_name + ".str").c_str(), "w");
+   // Dump the string set into the file.
    dump_stringset (str_file);
    fclose (str_file);
 
