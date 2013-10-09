@@ -1,4 +1,4 @@
-// $Id: stringset.h,v 1.1 2013-09-20 19:45:47-07 - - $
+// Author: Paul Scherer, pscherer@ucsc.edu
 
 #ifndef __STRINGSET__
 #define __STRINGSET__

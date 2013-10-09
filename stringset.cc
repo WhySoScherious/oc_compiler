@@ -1,3 +1,4 @@
+// Author: Paul Scherer, pscherer@ucsc.edu
 
 #include <string>
 #include <unordered_set>
