@@ -14,6 +14,7 @@ using namespace std;
 const size_t LINESIZE = 1024;
 
 int main (int argc, char **argv) {
+   const string CPP = "/usr/bin/cpp";
    string cpp_filename = "cpp_output";
    string prog_name;          // Name of program passed
    size_t period_pos;         // Index of period for file extension
@@ -47,7 +48,7 @@ int main (int argc, char **argv) {
    oc_file = fopen (path.c_str(), "r");
    if (oc_file == NULL) {
       fprintf (stderr, "Cannot access '%s': No such file or"
-            "directory.\n", path.c_str());
+            " directory.\n", path.c_str());
       exit (EXIT_FAILURE);
    }
 
@@ -87,19 +88,19 @@ int main (int argc, char **argv) {
 
    // If the -D option was passed, pass option for cpp command, else
    // call "cpp infile outfile".
+   string cpp_d_command = CPP + " -D " + dvalue + " " + path;
+   string cpp_command = CPP + " " + path;
+   FILE *cpp_file;
    if (dvalue.compare("") != 0)
-      system (("cpp -D " + dvalue + " " + path + " " +
-            cpp_filename).c_str());
+      cpp_file = popen (cpp_d_command.c_str(), "r");
    else
-      system (("cpp " + path + " " + cpp_filename).c_str());
+      cpp_file = popen (cpp_command.c_str(), "r");
    fclose (oc_file);
 
    // Check for a valid cpp output file and open it.
-   FILE *cpp_file;
-   cpp_file = fopen (cpp_filename.c_str(), "r");
    if (cpp_file == NULL) {
          fprintf (stderr, "Cannot access '%s': No such file or"
-               "directory.\n", cpp_filename.c_str());
+               " directory.\n", cpp_filename.c_str());
          exit (EXIT_FAILURE);
    }
 
@@ -113,19 +114,18 @@ int main (int argc, char **argv) {
       token = strtok (buffer, delim.c_str());
 
       while (token != NULL) {
-         const string* str = intern_stringset (token);
-         fprintf (str_file, "intern (\"%s\") returned %p->\"%s\"\n",
-                       token, str->c_str(), str->c_str());
+         intern_stringset (token);
          token = strtok (NULL, delim.c_str());
       }
    }
-
-   fclose (cpp_file);
 
    // Dump the string set into the file.
    dump_stringset (str_file);
    fclose (str_file);
 
+   if (pclose (cpp_file)) {
+      return EXIT_FAILURE;
+   }
+
    return EXIT_SUCCESS;
 }
-
