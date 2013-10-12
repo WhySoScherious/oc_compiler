@@ -22,7 +22,7 @@ check :
 	- checksource ${SOURCES}
 
 spotless : clean
-	- rm cpp_output *.str test.out ${OBJECTS}
+	- rm -f cpp_output *.str test.out ${OBJECTS}
 
 clean :
 	- rm ${EXECBIN}
