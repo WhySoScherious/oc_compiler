@@ -26,7 +26,7 @@ MANTISSA        ({DIGIT}+\.?{DIGIT}*|\.{DIGIT}+)
 EXPONENT        ([Ee][+-]?{DIGIT}+)
 NUMBER          ({MANTISSA}{EXPONENT}?)
 NOTNUMBER       ({MANTISSA}[Ee][+-]?)
-IDENT           ({LETTER}({LETTER}|{DIGIT})*)
+IDENT           ({LETTER}({LETTER}|{DIGIT})*)             
 
 %%
 
@@ -46,6 +46,38 @@ IDENT           ({LETTER}({LETTER}|{DIGIT})*)
 "("             { return yylval_token ('('); }
 ")"             { return yylval_token (')'); }
 ";"             { return yylval_token (';'); }
+"["             { return yylval_token ('['); }
+"]"             { return yylval_token (']'); }
+"{"             { return yylval_token ('{'); }
+"}"             { return yylval_token ('}'); }
+","             { return yylval_token (','); }
+"."             { return yylval_token ('.'); }
+"%"             { return yylval_token ('%'); }
+"!"             { return yylval_token ('!'); }
+"<"             { return yylval_token (TOK_LT); }
+">"             { return yylval_token (TOK_GT); }
+"[]"            { return yylval_token (TOK_ARRAY); }
+"=="            { return yylval_token (TOK_EQ); }
+"!="            { return yylval_token (TOK_NE); }
+"<="            { return yylval_token (TOK_LE); }
+">="            { return yylval_token (TOK_GE); }
+
+void            { return yylval_token (TOK_VOID); }
+bool            { return yylval_token (TOK_BOOL); }
+char            { return yylval_token (TOK_CHAR); }
+int             { return yylval_token (TOK_INT); }
+string          { return yylval_token (TOK_STRING); }
+struct          { return yylval_token (TOK_STRUCT); }
+if              { return yylval_token (TOK_IF); }
+else            { return yylval_token (TOK_ELSE); }
+while           { return yylval_token (TOK_WHILE); }
+return          { return yylval_token (TOK_RETURN); }
+new             { return yylval_token (TOK_NEW); }
+false           { return yylval_token (TOK_FALSE); }
+true            { return yylval_token (TOK_TRUE); }
+null            { return yylval_token (TOK_NULL); }
+ord             { return yylval_token (TOK_ORD); }
+chr             { return yylval_token (TOK_CHR); }
 
 {NOTNUMBER}     { scanner_badtoken (yytext);
                   return yylval_token (NUMBER); }
@@ -53,6 +85,3 @@ IDENT           ({LETTER}({LETTER}|{DIGIT})*)
 .               { scanner_badchar (*yytext); }
 
 %%
-
-RCSC("$Id: scanner.l,v 1.2 2013-09-19 19:55:32-07 - - $")
-
