@@ -24,8 +24,7 @@ ALLCSRC   = ${CSOURCES} ${CGENS}
 OBJECTS   = ${ALLCSRC:.cc=.o}
 LREPORT   = yylex.output
 YREPORT   = yyparse.output
-IREPORT   = ident.output
-REPORTS   = ${LREPORT} ${YREPORT} ${IREPORT}
+REPORTS   = ${LREPORT} ${YREPORT}
 ALLSRC    = ${ETCSRC} ${YSOURCES} ${LSOURCES} ${HSOURCES} ${CSOURCES}
 TESTINS   = ${wildcard test?.in}
 LISTSRC   = ${ALLSRC} ${HYGEN}
@@ -48,7 +47,6 @@ all : ${EXECBIN}
 #
 ${EXECBIN} : ${OBJECTS}
 	${GCC} -o${EXECBIN} ${OBJECTS}
-	ident ${OBJECTS} ${EXECBIN} >${IREPORT}
 
 #
 # Build an object file form a C source file.
@@ -69,20 +67,12 @@ check :
 ${CLGEN} : ${LSOURCES}
 	flex --outfile=${CLGEN} ${LSOURCES} 2>${LREPORT}
 	- grep -v '^  ' ${LREPORT}
-	- (perl -e 'print "="x65,"\n"'; cat lex.backup) >>${LREPORT} 
-	- rm lex.backup
 
 #
 # Build the parser.
 #
 ${CYGEN} ${HYGEN} : ${YSOURCES}
 	bison --defines=${HYGEN} --output=${CYGEN} ${YSOURCES}
-
-#
-# Check sources into an RCS subdirectory.
-#
-ci : ${ALLSRC} ${TESTINS}
-	cid + ${ALLSRC} ${TESTINS} test?.inh
 
 #
 # Make a listing from all of the sources

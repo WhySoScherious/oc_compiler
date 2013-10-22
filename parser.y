@@ -2,8 +2,18 @@
 // Dummy parser for scanner project.
 
 #include <assert.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include "lyutils.h"
 #include "astree.h"
+
+#define YYDEBUG 1
+#define YYERROR_VERBOSE 1
+#define YYPRINT yyprint
+#define YYMALLOC yycalloc
+
+static void* yycalloc (size_t size);
 
 %}
 

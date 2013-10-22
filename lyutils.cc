@@ -10,6 +10,7 @@ using namespace std;
 #include <string.h>
 
 #include "lyutils.h"
+#include "stringset.h"
 #include "auxlib.h"
 
 astree* yyparse_astree = NULL;
@@ -17,6 +18,8 @@ int scan_linenr = 1;
 int scan_offset = 0;
 bool scan_echo = false;
 vector<string> included_filenames;
+
+FILE *tok_file = NULL;
 
 const string* scanner_filename (int filenr) {
    return &included_filenames.at(filenr);
@@ -69,6 +72,9 @@ int yylval_token (int symbol) {
    int offset = scan_offset - yyleng;
    yylval = new_astree (symbol, included_filenames.size() - 1,
                         scan_linenr, offset, yytext);
+   fprintf (stdout, "%d  %d.%03d  %3d  %13s  %s\n",
+         (int) included_filenames.size() - 1, scan_linenr, offset, symbol,
+         get_yytname (symbol), intern_stringset(yytext)->c_str());
    return symbol;
 }
 
@@ -88,12 +94,10 @@ void scanner_include (void) {
       errprintf ("%: %d: [%s]: invalid directive, ignored\n",
                  scan_rc, yytext);
    }else {
-      printf (";# %d \"%s\"\n", linenr, filename);
+      fprintf (stdout, "# %d \"%s\"\n", linenr, filename);
       scanner_newfilename (filename);
       scan_linenr = linenr - 1;
       DEBUGF ('m', "filename=%s, scan_linenr=%d\n",
               included_filenames.back().c_str(), scan_linenr);
    }
 }
-
-RCSC("$Id: lyutils.cc,v 1.3 2013-10-11 18:56:52-07 - - $")

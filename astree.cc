@@ -107,5 +107,3 @@ void free_ast2 (astree* tree1, astree* tree2) {
    free_ast (tree1);
    free_ast (tree2);
 }
-
-RCSC("$Id: astree.cc,v 1.1 2013-10-11 18:52:46-07 - - $")
