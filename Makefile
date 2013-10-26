@@ -27,7 +27,7 @@ LREPORT   = yylex.output
 YREPORT   = yyparse.output
 REPORTS   = ${LREPORT} ${YREPORT}
 ALLSRC    = ${ETCSRC} ${YSOURCES} ${LSOURCES} ${HSOURCES} ${CSOURCES}
-TESTINS   = ${wildcard test?.in}
+TESTINS   = ${wildcard test?.oc}
 LISTSRC   = ${ALLSRC} ${HYGEN}
 SUBMIT = submit cmps104a-wm.f13 asg2
 
@@ -87,15 +87,15 @@ ${CYGEN} ${HYGEN} : ${YSOURCES}
 lis : ${LISTSRC} tests
 	mkpspdf List.source.ps ${LISTSRC}
 	mkpspdf List.output.ps ${REPORTS} \
-		${foreach test, ${TESTINS:.in=}, \
-		${patsubst %, ${test}.%, in out err}}
+		${foreach test, ${TESTINS:.oc=}, \
+		${patsubst %, ${test}.%, oc out err}}
 
 #
 # Clean and spotless remove generated files.
 #
 clean :
 	- rm ${OBJECTS} ${ALLGENS} ${REPORTS} ${DEPSFILE} core
-	- rm ${foreach test, ${TESTINS:.in=}, \
+	- rm ${foreach test, ${TESTINS:.oc=}, \
 		${patsubst %, ${test}.%, out err}}
 
 spotless : clean
@@ -119,9 +119,9 @@ ${DEPSFILE} :
 
 tests : ${EXECBIN}
 	touch ${TESTINS}
-	make --no-print-directory ${TESTINS:.in=.out}
+	make --no-print-directory ${TESTINS:.oc=.out}
 
-%.out %.err : %.in ${EXECBIN}
+%.out %.err : %.oc ${EXECBIN}
 	( ${VALGRIND} ${EXECBIN} -ly -@@ $< \
 	;  echo EXIT STATUS $$? 1>&2 \
 	) 1>$*.out 2>$*.err
