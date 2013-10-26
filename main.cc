@@ -72,13 +72,35 @@ void scan_opts (int argc, char** argv) {
    scanner_newfilename (filename);
 }
 
+void insert_stringset() {
+   char *token;               // Tokenized string
+   string delim = "\\ \t\n";
+
+   // Create a program.str file
+   FILE *str_file = fopen ((prog_name + ".str").c_str(), "w");
+
+   // Read line of cpp output file and tokenize it, and insert it into
+   // the string set.
+   char buffer[LINESIZE];
+   while (fgets (buffer, LINESIZE, yyin) != NULL) {
+      token = strtok (buffer, delim.c_str());
+
+      while (token != NULL) {
+         intern_stringset (token);
+         token = strtok (NULL, delim.c_str());
+      }
+   }
+
+   // Dump the string set into the file.
+   dump_stringset (str_file);
+   fclose (str_file);
+}
+
 int main (int argc, char **argv) {
    int parsecode = 0;
    set_execname (argv[0]);
 
    size_t period_pos;         // Index of period for file extension
-   string delim = "\\ \t\n";
-   char *token;               // Tokenized string
 
    int pathindex = argc - 1;        // Index of path from arguments
    string path = argv[pathindex];   // Path name of .oc file
@@ -120,38 +142,21 @@ int main (int argc, char **argv) {
    scan_opts (argc, argv);
 
    parsecode = yyparse();
+
    if (parsecode) {
       errprintf ("%:parse failed (%d)\n", parsecode);
    }else {
       DEBUGSTMT ('a', dump_astree (stderr, yyparse_astree); );
    }
 
-   // Create a program.str file
-   FILE *str_file = fopen ((prog_name + ".str").c_str(), "w");
+   insert_stringset();
 
-   // Read line of cpp output file and tokenize it, and insert it into
-   // the string set.
-   char buffer[LINESIZE];
-   while (fgets (buffer, LINESIZE, yyin) != NULL) {
-      token = strtok (buffer, delim.c_str());
-
-      while (token != NULL) {
-         intern_stringset (token);
-         token = strtok (NULL, delim.c_str());
-      }
-   }
-
-   // Dump the string set into the file.
-   dump_stringset (str_file);
-   fclose (str_file);
    close_tok_file ();
 
    if (pclose (yyin)) {
       set_exitstatus (EXIT_FAILURE);
       exit (get_exitstatus());
    }
-
-   DEBUGSTMT ('s', dump_stringset (stderr); );
 
    yylex_destroy();
 

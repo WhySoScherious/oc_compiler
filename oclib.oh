@@ -1,4 +1,4 @@
-// $Id: oclib.oh,v 1.24 2011-11-18 17:34:29-08 - - $
+// Paul Scherer, pscherer@ucsc.edu
 
 #ifndef __OCLIB_OH__
 #define __OCLIB_OH__

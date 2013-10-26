@@ -1,3 +1,4 @@
+// Paul Scherer, pscherer@ucsc.edu
 
 #include <assert.h>
 #include <errno.h>

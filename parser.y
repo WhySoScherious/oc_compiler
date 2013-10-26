@@ -1,4 +1,6 @@
 %{
+// Paul Scherer, pscherer@ucsc.edu
+
 // Dummy parser for scanner project.
 
 #include <assert.h>

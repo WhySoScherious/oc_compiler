@@ -1,3 +1,5 @@
+// Paul Scherer, pscherer@ucsc.edu
+
 #ifndef __ASTREE_H__
 #define __ASTREE_H__
 

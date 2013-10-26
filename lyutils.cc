@@ -1,3 +1,4 @@
+// Paul Scherer, pscherer@ucsc.edu
 
 #include <vector>
 #include <string>

@@ -1,3 +1,5 @@
+// Paul Scherer, pscherer@ucsc.edu
+
 #ifndef __AUXLIB_H__
 #define __AUXLIB_H__
 
