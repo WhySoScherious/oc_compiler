@@ -8,13 +8,6 @@
 #include "lyutils.h"
 #include "astree.h"
 
-#define YYDEBUG 1
-#define YYERROR_VERBOSE 1
-#define YYPRINT yyprint
-#define YYMALLOC yycalloc
-
-static void* yycalloc (size_t size);
-
 %}
 
 %debug
@@ -28,7 +21,7 @@ static void* yycalloc (size_t size);
 %token TOK_IF TOK_ELSE TOK_WHILE TOK_RETURN TOK_STRUCT
 %token TOK_FALSE TOK_TRUE TOK_NULL TOK_NEW TOK_ARRAY
 %token TOK_EQ TOK_NE TOK_LT TOK_LE TOK_GT TOK_GE
-%token TOK_INTCON TOK_CHARCON TOK_STRINGCON
+%token TOK_INTCON TOK_CHARCON TOK_STRCON
 
 %token TOK_BLOCK TOK_CALL TOK_IFELSE TOK_INITDECL
 %token TOK_POS TOK_NEG TOK_NEWARRAY TOK_TYPEID TOK_FIELD
@@ -45,7 +38,7 @@ token   : '(' | ')' | '[' | ']' | '{' | '}' | ';' | ',' | '.'
         | TOK_IF | TOK_ELSE | TOK_WHILE | TOK_RETURN | TOK_STRUCT
         | TOK_FALSE | TOK_TRUE | TOK_NULL | TOK_NEW | TOK_ARRAY
         | TOK_EQ | TOK_NE | TOK_LT | TOK_LE | TOK_GT | TOK_GE
-        | TOK_CHARCON | TOK_STRINGCON
+        | TOK_CHARCON | TOK_STRCON
         | TOK_ORD | TOK_CHR | ROOT | IDENT | NUMBER
         ;
 

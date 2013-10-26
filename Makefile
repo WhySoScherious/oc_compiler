@@ -13,13 +13,14 @@ HSOURCES  = astree.h  lyutils.h  auxlib.h  stringset.h
 CSOURCES  = astree.cc lyutils.cc auxlib.cc stringset.cc main.cc
 LSOURCES  = scanner.l
 YSOURCES  = parser.y
-ETCSRC    = README ${MKFILE} ${DEPSFILE}
+ETCSRC    = oclib.oh README 
 CLGEN     = yylex.cc
 HYGEN     = yyparse.h
 CYGEN     = yyparse.cc
 CGENS     = ${CLGEN} ${CYGEN}
 ALLGENS   = ${HYGEN} ${CGENS}
 EXECBIN   = oc
+ALLSRCF   = ${HSOURCES} ${CSOURCES} ${LSOURCES} ${YSOURCES} ${ETCSRC}
 ALLCSRC   = ${CSOURCES} ${CGENS}
 OBJECTS   = ${ALLCSRC:.cc=.o}
 LREPORT   = yylex.output
@@ -59,7 +60,13 @@ ${EXECBIN} : ${OBJECTS}
 # Checksource files.
 #
 check :
-	- checksource ${SOURCES}
+	- checksource ${ALLSRCF}
+
+#
+# Submit the required assignment files.
+#
+submit :
+	- ${SUBMIT} ${ALLSRCF}
 
 #
 # Build the scanner.
@@ -92,7 +99,7 @@ clean :
 		${patsubst %, ${test}.%, out err}}
 
 spotless : clean
-	- rm ${EXECBIN} *.str List.*.ps List.*.pdf
+	- rm ${EXECBIN} *.str *.tok List.*.ps List.*.pdf
 
 
 #

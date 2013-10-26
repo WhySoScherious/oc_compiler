@@ -17,11 +17,7 @@ using namespace std;
 #include "stringset.h"
 
 const size_t LINESIZE = 1024;
-// Flags for option parameters passed.
-int lflag = 0;
-int yflag = 0;
-string dvalue = "";
-
+string dvalue = "";        // Flag for option parameter passed.
 string prog_name;          // Name of program passed
 
 const string CPP = "/usr/bin/cpp";
@@ -48,13 +44,16 @@ void yyin_cpp_popen (const char* filename) {
 
 void scan_opts (int argc, char** argv) {
    // Activate flags if passed in command arguments.
+   opterr = 0;
+   yy_flex_debug = 0;
+   yydebug = 0;
    int c;
    while ((c = getopt (argc, argv, "@:D:ly")) != -1) {
       switch (c) {
          case '@': set_debugflags (optarg);  break;
          case 'D': dvalue = optarg;          break;
-         case 'l': lflag = 1;                break;
-         case 'y': yflag = 1;                break;
+         case 'l': yy_flex_debug = 1;        break;
+         case 'y': yydebug = 1;              break;
          default:  errprintf ("%:bad option (%c)\n", optopt); break;
       }
    }
@@ -65,6 +64,8 @@ void scan_opts (int argc, char** argv) {
    }
 
    const char* filename = optind == argc ? "-" : argv[optind];
+   open_tok_file (prog_name);
+
    yyin_cpp_popen (filename);
    DEBUGF ('m', "filename = %s, yyin = %p, fileno (yyin) = %d\n",
          filename, yyin, fileno (yyin));
@@ -72,9 +73,9 @@ void scan_opts (int argc, char** argv) {
 }
 
 int main (int argc, char **argv) {
+   int parsecode = 0;
    set_execname (argv[0]);
 
-   int parsecode = 0;
    size_t period_pos;         // Index of period for file extension
    string delim = "\\ \t\n";
    char *token;               // Tokenized string
@@ -109,6 +110,13 @@ int main (int argc, char **argv) {
    prog_name = prog_name.substr (0, period_pos);
    free (cp_path);
 
+   // Check if file specified exists
+   if (fopen (path.c_str(), "r") == NULL) {
+      errprintf ("Cannot access '%s': No such file or"
+            " directory.\n", path.c_str());
+      exit (get_exitstatus());
+   }
+
    scan_opts (argc, argv);
 
    parsecode = yyparse();
@@ -136,6 +144,7 @@ int main (int argc, char **argv) {
    // Dump the string set into the file.
    dump_stringset (str_file);
    fclose (str_file);
+   close_tok_file ();
 
    if (pclose (yyin)) {
       set_exitstatus (EXIT_FAILURE);
