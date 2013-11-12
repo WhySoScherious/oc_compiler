@@ -40,7 +40,7 @@
 %nonassoc TOK_NEW
 %nonassoc TOK_PAREN
 
-%start program
+%start start
 
 %%
 
@@ -56,13 +56,16 @@ program   : program structdef   { $$ = adopt1 ($1, $2); }
           | /* empty */         { $$ = new_parseroot(); }
           ;
         
-structdef : TOK_STRUCT IDENT '{' declseq '}'
+structdef : TOK_STRUCT IDENT declseq '}'
                                 { $2->symbol = TOK_TYPEID;
-                                  $$ = adopt2 ($1, $2, $4); }
+                                  $$ = adopt2 ($1, $2, $3); }
+          | TOK_STRUCT IDENT '{' '}'
+                                { $2->symbol = TOK_TYPEID;
+                                  $$ = adopt1 ($1, $2); }
           ;
 
-declseq   : declseq decl ';'    { $$ = adopt1 ($1, $2); }
-          | /* empty */
+declseq   : '{' decl ';'        { $$ = adopt1 ($1, $2); }
+          | declseq decl ';'    { $$ = adopt1 ($1, $2); }
           ;
 
 decl      : type IDENT          { $2->symbol = TOK_DECLID;
@@ -81,53 +84,52 @@ basetype  : TOK_VOID            { $$ = $1; }
           | IDENT               { $$ = $1; }
           ;
           
-function  : type IDENT '(' ')' block
+function  : type IDENT funcseq ')' block
+                              { astree* temp = new_astree (TOK_FUNCTION,
+                                $1->filenr, $1->linenr, $1->offset,
+                                "function");
+                                $2->symbol = TOK_DECLID;
+                                $1 = adopt2 ($1, $2, $3);
+                                $1 = adopt1 ($1, $5);
+                                $$ = adopt1 (temp, $1); }
+          | type IDENT '(' ')' block
                               { astree* temp = new_astree (TOK_FUNCTION,
                                 $1->filenr, $1->linenr, $1->offset,
                                 "function");
                                 $2->symbol = TOK_DECLID;
                                 $1 = adopt2 ($1, $2, $5);
                                 $$ = adopt1 (temp, $1); }
-          | type IDENT '(' decl funcseq ')' block
-                              { astree* temp = new_astree (TOK_FUNCTION,
-                                $1->filenr, $1->linenr, $1->offset,
-                                "function");
-                                $2->symbol = TOK_DECLID;
-                                $3->symbol = TOK_PARAMLIST;
-                                $3 = adopt2 ($3, $4, $5);
-                                $1 = adopt2 ($1, $2, $3);
-                                $1 = adopt1 ($1, $7);
-                                $$ = adopt1 (temp, $1); }
           ;
 
-prototype  : type IDENT '(' ')' ';'
-                             { astree* temp = new_astree (TOK_PROTOTYPE,
-                               $1->filenr, $1->linenr, $1->offset,
-                               "prototype");
-                               $2->symbol = TOK_DECLID;
-                               $1 = adopt1 ($1, $2);
-                               $$ = adopt1 (temp, $1); }
-          | type IDENT '(' decl funcseq ')' ';'
-                             { astree* temp = new_astree (TOK_PROTOTYPE,
-                               $1->filenr, $1->linenr, $1->offset,
-                               "prototype");
-                               $2->symbol = TOK_DECLID;
-                               $3->symbol = TOK_PARAMLIST;
-                               $3 = adopt2 ($3, $4, $5);
-                               $1 = adopt2 ($1, $2, $3);
-                               $$ = adopt1 (temp, $1); }
+prototype : type IDENT funcseq ')' ';'
+                            { astree* temp = new_astree (TOK_PROTOTYPE,
+                              $1->filenr, $1->linenr, $1->offset,
+                              "prototype");
+                              $2->symbol = TOK_DECLID;
+                              $1 = adopt2 ($1, $2, $3);
+                              $$ = adopt1 (temp, $1); }
+          | type IDENT '(' ')' ';'
+                            { astree* temp = new_astree (TOK_PROTOTYPE,
+                              $1->filenr, $1->linenr, $1->offset,
+                              "prototype");
+                              $2->symbol = TOK_DECLID;
+                              $1 = adopt1 ($1, $2);
+                              $$ = adopt1 (temp, $1); }
           ;
 
-funcseq   : funcseq ',' decl    { $$ = adopt1 ($1, $3); }
-          | /* empty */
+funcseq   : '(' decl            { $1->symbol = TOK_PARAMLIST;
+                                  $$ = adopt1 ($1, $2); }
+          | funcseq ',' decl    { $$ = adopt1 ($1, $3); }
           ;
 
 block     : '{' stmtseq '}'     { $1->symbol = TOK_BLOCK;
                                   $$ = adopt1 ($1, $2); }
+          | '{' '}'             { $1->symbol = TOK_BLOCK;
+                                  $$ = $1; }
           ;
 
-stmtseq   : stmtseq statement   { $$ = adopt1 ($1, $2); }
-          | /* empty */
+stmtseq   : statement           { $$ = $1; }
+          | stmtseq statement   { $$ = adopt1 ($1, $2); }
           ;
 
 statement : block               { $$ = $1; }
@@ -136,25 +138,27 @@ statement : block               { $$ = $1; }
           | ifelse              { $$ = $1; }
           | return              { $$ = $1; }
           | expr ';'            { $$ = $1; }
+          | ';'                 { $1->symbol = TOK_BLOCK;
+                                  $$ = $1;}
           ;
 
 vardecl   : type IDENT '=' expr ';'
                                 { $2->symbol = TOK_DECLID;
                                   $3->symbol = TOK_VARDECL;
-                                  $1 = adopt2 ($1, $2, $4);
-                                  $$ = adopt1 ($3, $1); }
+                                  $1 = adopt1 ($1, $2);
+                                  $$ = adopt2 ($3, $1, $4); }
           ;
 
 while     : TOK_WHILE '(' expr ')' statement
                                 { $$ = adopt2 ($1, $3, $5); }
           ;
 
-ifelse    : TOK_IF '(' expr ')' statement
-                                { $$ = adopt2 ($1, $3, $5); }
-            TOK_IF '(' expr ')' statement TOK_ELSE statement
+ifelse    : TOK_IF '(' expr ')' statement TOK_ELSE statement
                                 { $1->symbol = TOK_IFELSE;
                                   $1 = adopt2 ($1, $3, $5);
                                   $$ = adopt1 ($1, $7); }
+          | TOK_IF '(' expr ')' statement
+                                { $$ = adopt2 ($1, $3, $5); }
           ;
 
 return    : TOK_RETURN expr ';' { $$ = adopt1 ($1, $2); }
@@ -192,26 +196,25 @@ unop      : '+' expr %prec TOK_POS  {$$ = adopt1sym ($1, $2, TOK_POS);}
           | TOK_CHR expr            {$$ = adopt1 ($1, $2);}
           ;
 
-allocator : TOK_NEW IDENT '(' ')'
+allocator : TOK_NEW TOK_STRING '(' expr ')'
+                            { $$ = adopt1sym ($1, $4, TOK_NEWSTRING); }
+          | TOK_NEW IDENT '(' ')'
                             { $2->symbol = TOK_TYPEID;
                               $$ = adopt1 ($1, $2); }
-          | TOK_NEW TOK_STRING '(' expr ')'
-                            { $$ = adopt1sym ($1, $4, TOK_NEWSTRING); }
           | TOK_NEW basetype '[' expr ']'
                             { $1->symbol = TOK_NEWARRAY;
                               $$ = adopt2($1, $2, $4); }
           ;
 
-call      : IDENT '(' ')' %prec TOK_CALL
-                                    {$$ = adopt1sym($2, $1, TOK_CALL);}
-          | IDENT '(' expr exprseq ')' %prec TOK_CALL
+call      : IDENT '(' exprseq ')' %prec TOK_CALL
                                     { $2->symbol = TOK_CALL;
-                                      $3 = adopt1($3, $4);
                                       $$ = adopt2($2, $1, $3); }
+          | IDENT '(' ')' %prec TOK_CALL
+                                    {$$ = adopt1sym($2, $1, TOK_CALL);}
           ;
 
-exprseq   : exprseq ',' expr        { $$ = adopt1($1, $3); }
-          | /* empty */
+exprseq   : expr                    { $$ = $1; }
+          | exprseq ',' expr        { $$ = adopt1 ($1, $3); }
           ;
 
 variable  : IDENT                   { $$ = $1; }
@@ -222,12 +225,14 @@ variable  : IDENT                   { $$ = $1; }
                                       $$ = adopt2 ($2, $1, $3); }
           ;
 
-constant  : TOK_INTCON              { $$ = $1; }
+constant  : NUMBER                  { $$ = $1; }
           | TOK_STRCON              { $$ = $1; }
+          | TOK_CHARCON             { $$ = $1; }
           | TOK_FALSE               { $$ = $1; }
           | TOK_TRUE                { $$ = $1; }
           | TOK_NULL                { $$ = $1; }
           ;
+
 %%
 
 const char *get_yytname (int symbol) {
