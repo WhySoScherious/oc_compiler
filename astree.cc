@@ -66,7 +66,8 @@ static void dump_astree_rec (FILE* outfile, astree* root,
    if (root == NULL) return;
    fprintf (outfile, "%*s%s ", depth * 3, "",
             root->lexinfo->c_str());
-   dump_node (outfile, root);
+   if (outfile == stderr)
+      dump_node (outfile, root);
    fprintf (outfile, "\n");
    for (size_t child = 0; child < root->children.size();
         ++child) {

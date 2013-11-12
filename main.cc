@@ -143,9 +143,12 @@ int main (int argc, char **argv) {
 
    parsecode = yyparse();
 
+   FILE *ast_file = fopen ((prog_name + ".ast").c_str(), "w");
+
    if (parsecode) {
       errprintf ("%:parse failed (%d)\n", parsecode);
    }else {
+      dump_astree (ast_file, yyparse_astree);
       DEBUGSTMT ('a', dump_astree (stderr, yyparse_astree); );
    }
 
