@@ -155,6 +155,7 @@ int main (int argc, char **argv) {
    insert_stringset();
 
    close_tok_file ();
+   fclose (ast_file);
 
    if (pclose (yyin)) {
       set_exitstatus (EXIT_FAILURE);
