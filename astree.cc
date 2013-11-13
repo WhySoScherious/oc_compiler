@@ -45,7 +45,10 @@ astree* adopt1sym (astree* root, astree* child, int symbol) {
    return root;
 }
 
-
+/*
+ * Returns true if the name of a non-terminal symbol is passed,
+ * otherwise, return false.
+ */
 static bool is_non_term (char *tname) {
    if (strcmp (tname, "ROOT") == 0 ||
          strcmp (tname, "FUNCTION") == 0 ||
@@ -75,6 +78,9 @@ static bool is_non_term (char *tname) {
    return false;
 }
 
+/*
+ * Converts a non-terminal symbol name to lower-case symbol name.
+ */
 static char* convert_non_term (char *tname) {
    if (strcmp (tname, "ROOT") == 0)
       return strdup ("program");
@@ -137,15 +143,25 @@ static void dump_astree_rec (FILE* outfile, astree* root,
       int depth) {
    if (root == NULL) return;
 
+   // Removes the TOK_ if front of symbol token name.
    char *tname = (char *) get_yytname (root->symbol);
    if (strstr (tname, "TOK_") == tname) tname += 4;
 
+   /*
+    * If the debug statement was called, use Mackey's print code for
+    * dumping to stederr. Else use grading scheme to dump to .ast file.
+    */
    if (outfile == stderr) {
       fprintf (outfile, "%*s%s ", depth * 3, "",
             root->lexinfo->c_str());
       dump_node (outfile, root);
       fprintf (outfile, "\n");
    } else {
+      /*
+       * If the node is of a non-terminal just print name of
+       * non-terminal. Else, print node token symbol and lexical
+       * information.
+       */
       if (is_non_term (tname)) {
          if (strcmp (root->lexinfo->c_str(), ";")) {
             fprintf (outfile, "%*s%s ", depth * 2, "",
