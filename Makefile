@@ -29,7 +29,7 @@ REPORTS   = ${LREPORT} ${YREPORT}
 ALLSRC    = ${ETCSRC} ${YSOURCES} ${LSOURCES} ${HSOURCES} ${CSOURCES}
 TESTINS   = ${wildcard test?.oc}
 LISTSRC   = ${ALLSRC} ${HYGEN}
-SUBMIT = submit cmps104a-wm.f13 asg2
+SUBMIT = submit cmps104a-wm.f13 asg3
 
 #
 # Definitions of the compiler and compilation options:
