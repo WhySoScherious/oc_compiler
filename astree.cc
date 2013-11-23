@@ -72,7 +72,8 @@ static bool is_non_term (char *tname) {
          strcmp (tname, "IF") == 0 ||
          strcmp (tname, "IFELSE") == 0 ||
          strcmp (tname, "RETURN") == 0 ||
-         strcmp (tname, "RETURNVOID") == 0){
+         strcmp (tname, "RETURNVOID") == 0 ||
+         strcmp (tname, "STRUCT") == 0) {
       return true;
    }
    return false;
@@ -90,6 +91,8 @@ static char* convert_non_term (char *tname) {
       return strdup ("vardecl");
    if (strcmp (tname, "PROTOTYPE") == 0)
       return strdup ("prototype");
+   if (strcmp (tname, "STRUCT") == 0)
+         return strdup ("struct");
    if (strcmp (tname, "FUNCTION") == 0)
       return strdup ("function");
    if (strcmp (tname, "PARAMLIST") == 0)

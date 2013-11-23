@@ -67,7 +67,8 @@ structdef : TOK_STRUCT IDENT declseq '}'
                                   $$ = adopt1 ($1, $2); }
           ;
 
-declseq   : '{' decl ';'        { $$ = $2; }
+declseq   : '{' decl ';'        { $1->symbol = TOK_PARAMLIST;
+                                  $$ = adopt1 ($1, $2); }
           | declseq decl ';'    { $$ = adopt1 ($1, $2); }
           ;
 
