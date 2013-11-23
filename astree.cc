@@ -66,7 +66,7 @@ static bool is_non_term (char *tname) {
          strcmp (tname, "UNOP") == 0 ||
          strcmp (tname, "BASETYPE") == 0 ||
          strcmp (tname, "TYPE") == 0 ||
-         strcmp (tname, "NEW") == 0 ||
+         strcmp (tname, "ALLOCATOR") == 0 ||
          strcmp (tname, "BLOCK") == 0 ||
          strcmp (tname, "ALLOCATOR") == 0 ||
          strcmp (tname, "IF") == 0 ||
@@ -109,8 +109,8 @@ static char* convert_non_term (char *tname) {
       return strdup ("basetype");
    if (strcmp (tname, "TYPE") == 0)
       return strdup ("type");
-   if (strcmp (tname, "NEW") == 0)
-      return strdup ("new");
+   if (strcmp (tname, "ALLOCATOR") == 0)
+      return strdup ("allocator");
    if (strcmp (tname, "BLOCK") == 0)
       return strdup ("block");
    if (strcmp (tname, "ALLOCATOR") == 0)

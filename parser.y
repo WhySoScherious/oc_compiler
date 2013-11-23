@@ -118,16 +118,15 @@ function  : type IDENT funcseq ')' block
                                 $1->filenr, $1->linenr, $1->offset,
                                 "function");
                                 $2->symbol = TOK_DECLID;
-                                $1 = adopt2 ($1, $2, $3);
-                                $1 = adopt1 ($1, $5);
-                                $$ = adopt1 (temp, $1); }
+                                temp = adopt2 (temp, $1, $2);
+                                $$ = adopt2 (temp, $3, $5); }
           | type IDENT '(' ')' block
                               { astree* temp = new_astree (TOK_FUNCTION,
                                 $1->filenr, $1->linenr, $1->offset,
                                 "function");
                                 $2->symbol = TOK_DECLID;
-                                $1 = adopt2 ($1, $2, $5);
-                                $$ = adopt1 (temp, $1); }
+                                temp = adopt2 (temp, $1, $2);
+                                $$ = adopt1 (temp, $5);  }
           ;
 
 prototype : type IDENT funcseq ')' ';'
@@ -135,15 +134,14 @@ prototype : type IDENT funcseq ')' ';'
                               $1->filenr, $1->linenr, $1->offset,
                               "prototype");
                               $2->symbol = TOK_DECLID;
-                              $1 = adopt2 ($1, $2, $3);
-                              $$ = adopt1 (temp, $1); }
+                              temp = adopt2 (temp, $1, $2);
+                              $$ = adopt1 (temp, $3); }
           | type IDENT '(' ')' ';'
                             { astree* temp = new_astree (TOK_PROTOTYPE,
                               $1->filenr, $1->linenr, $1->offset,
                               "prototype");
                               $2->symbol = TOK_DECLID;
-                              $1 = adopt1 ($1, $2);
-                              $$ = adopt1 (temp, $1); }
+                              $$ = adopt2 (temp, $1, $2); }
           ;
 
 funcseq   : '(' decl            { $1->symbol = TOK_PARAMLIST;
@@ -294,25 +292,15 @@ unop      : '+' expr %prec TOK_POS  { astree* temp = new_astree
           ;
 
 allocator : TOK_NEW TOK_STRING '(' expr ')'
-                            { astree* temp = new_astree (TOK_ALLOCATOR,
-                              $1->filenr, $1->linenr, $1->offset,
-                              "allocator");
-                              $1 = adopt1sym ($1, $4, TOK_NEWSTRING);
-                              $$ = adopt1 (temp, $1); }
+                            { $1->symbol = TOK_ALLOCATOR;
+                              $$ = adopt1sym ($1, $4, TOK_NEWSTRING); }
           | TOK_NEW IDENT '(' ')'
-                            { astree* temp = new_astree (TOK_ALLOCATOR,
-                              $1->filenr, $1->linenr, $1->offset,
-                              "allocator");
+                            { $1->symbol = TOK_ALLOCATOR;
                               $2->symbol = TOK_TYPEID;
-                              $1 = adopt1 ($1, $2);
-                              $$ = adopt1 (temp, $1); }
+                              $$ = adopt1 ($1, $2); }
           | TOK_NEW basetype '[' expr ']'
-                            { astree* temp = new_astree (TOK_ALLOCATOR,
-                              $1->filenr, $1->linenr, $1->offset,
-                              "allocator");
-                              $1->symbol = TOK_NEWARRAY;
-                              $1 = adopt2 ($1, $2, $4);
-                              $$ = adopt1 (temp, $1); }
+                            { $1->symbol = TOK_ALLOCATOR;
+                              $$ = adopt2 ($1, $2, $4); }
           ;
 
 call      : IDENT '(' exprseq ')' %prec TOK_CALL
