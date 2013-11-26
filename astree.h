@@ -8,6 +8,7 @@
 using namespace std;
 
 #include "auxlib.h"
+#include "symtable.h"
 
 struct astree {
    int symbol;               // token code
@@ -29,6 +30,8 @@ void yyprint (FILE* outfile, unsigned short toknum,
               astree* yyvaluep);
 void free_ast (astree* tree);
 void free_ast2 (astree* tree1, astree* tree2);
+void traverse_ast (SymbolTable *global, SymbolTable *types,
+      astree* root);
 
 RCSH("$Id: astree.h,v 1.2 2013-10-11 18:52:46-07 - - $")
 #endif

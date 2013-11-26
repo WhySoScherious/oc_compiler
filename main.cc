@@ -15,6 +15,7 @@ using namespace std;
 #include "auxlib.h"
 #include "lyutils.h"
 #include "stringset.h"
+#include "symtable.h"
 
 const size_t LINESIZE = 1024;
 string dvalue = "";        // Flag for option parameter passed.
@@ -143,19 +144,25 @@ int main (int argc, char **argv) {
 
    parsecode = yyparse();
 
+   SymbolTable *types = new SymbolTable(NULL);
+   SymbolTable *global = new SymbolTable(NULL);
    FILE *ast_file = fopen ((prog_name + ".ast").c_str(), "w");
+   FILE *sym_file = fopen ((prog_name + ".sym").c_str(), "w");
 
    if (parsecode) {
       errprintf ("%:parse failed (%d)\n", parsecode);
-   }else {
+   } else {
       dump_astree (ast_file, yyparse_astree);
       DEBUGSTMT ('a', dump_astree (stderr, yyparse_astree); );
+      traverse_ast (global, types, yyparse_astree);
+      global->dump (sym_file, 0);
    }
 
    insert_stringset();
 
    close_tok_file ();
    fclose (ast_file);
+   fclose (sym_file);
 
    if (pclose (yyin)) {
       set_exitstatus (EXIT_FAILURE);

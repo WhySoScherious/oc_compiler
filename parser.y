@@ -165,8 +165,7 @@ statement : block               { $$ = $1; }
           | ifelse              { $$ = $1; }
           | return              { $$ = $1; }
           | expr ';'            { $$ = $1; }
-          | ';'                 { $1->symbol = TOK_BLOCK;
-                                  $$ = $1;}
+          | ';'                 { $$ = $1;}
           ;
 
 vardecl   : type IDENT '=' expr ';'

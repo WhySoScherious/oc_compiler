@@ -1,4 +1,8 @@
+#include <string.h>
+
+#include "astree.h"
 #include "auxlib.h"
+#include "lyutils.h"
 #include "symtable.h"
 
 // Creates and returns a new symbol table.
@@ -9,6 +13,10 @@ SymbolTable::SymbolTable(SymbolTable* parent) {
   this->parent = parent;
   // Assign a unique number and increment the global N
   this->number = SymbolTable::N++;
+}
+
+SymbolTable* SymbolTable::getParent() {
+   return this->parent;
 }
 
 // Creates a new empty table beneath the current table and returns it.
@@ -29,15 +37,16 @@ SymbolTable* SymbolTable::enterBlock() {
 // and creates a new empty table beneath the current one.
 //
 // Example: To enter the function "void add(int a, int b)",
-//          call "currentSymbolTable->enterFunction("add", "void(int,int)");
-SymbolTable* SymbolTable::enterFunction(string name, string signature) {
+//          call "currentSymbolTable->
+//                  enterFunction("add", "void(int,int)");
+SymbolTable* SymbolTable::enterFunction(string name, string signature){
   // Add a new symbol using the signature as type
   this->addSymbol(name, signature);
   // Create the child symbol table
   SymbolTable* child = new SymbolTable(this);
   // Store the symbol table under the name of the function
-  // This allows us to retrieve the corresponding symbol table of a function
-  // and the coresponding function of a symbol table.
+  // This allows us to retrieve the corresponding symbol table of a
+  // function and the coresponding function of a symbol table.
   this->subscopes[name] = child;
   return child;
 }
@@ -66,7 +75,8 @@ void SymbolTable::dump(FILE* symfile, int depth) {
     const char* type = it->second.c_str();
     // Print the symbol as "name {blocknumber} type"
     // indented by 3 spaces for each level
-    fprintf(symfile, "%*s%s {%d} %s\n", 3*depth, "", name, this->number, type);
+    fprintf(symfile, "%*s%s {%d} %s\n", 3*depth, "", name,
+          this->number, type);
     // If the symbol we just printed is actually a function
     // then we can find the symbol table of the function by the name
     if (this->subscopes.count(name) > 0) {
@@ -80,7 +90,8 @@ void SymbolTable::dump(FILE* symfile, int depth) {
   // Iterate over all the child symbol tables
   for (i = this->subscopes.begin(); i != this->subscopes.end(); ++i) {
     // If we find the key of this symbol table in the symbol mapping
-    // then it is actually a function scope which we already dumped above
+    // then it is actually a function scope which we already dumped
+    // above
     if (this->mapping.count(i->first) < 1) {
       // Otherwise, recursively dump the (non-function) symbol table
       i->second->dump(symfile, depth + 1);
@@ -166,4 +177,3 @@ vector<string> SymbolTable::parseSignature(string sig) {
   }
   return results;
 }
-

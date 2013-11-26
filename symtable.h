@@ -38,6 +38,8 @@ public:
   // Use "new SymbolTable(NULL)" to create the global table
   SymbolTable(SymbolTable* parent);
 
+  SymbolTable *getParent();
+
   // Creates a new empty table beneath the current table and returns it.
   SymbolTable* enterBlock();
 

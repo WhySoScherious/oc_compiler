@@ -100,7 +100,7 @@ clean :
 		${patsubst %, ${test}.%, out err}}
 
 spotless : clean
-	- rm ${EXECBIN} *.str *.tok *.ast List.*.ps List.*.pdf
+	- rm ${EXECBIN} *.str *.tok *.ast *.sym List.*.ps List.*.pdf
 
 
 #

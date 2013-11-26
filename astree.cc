@@ -10,6 +10,11 @@
 #include "astree.h"
 #include "stringset.h"
 #include "lyutils.h"
+#include "symtable.h"
+
+static const size_t FN_WITH_PARAM = 4;
+static const size_t STRUCT_WITH_PARAM = 2;
+static const size_t PROTO_WITH_PARAM = 3;
 
 astree* new_astree (int symbol, int filenr, int linenr,
       int offset, const char* lexinfo) {
@@ -92,7 +97,7 @@ static char* convert_non_term (char *tname) {
    if (strcmp (tname, "PROTOTYPE") == 0)
       return strdup ("prototype");
    if (strcmp (tname, "STRUCT") == 0)
-         return strdup ("struct");
+      return strdup ("struct");
    if (strcmp (tname, "FUNCTION") == 0)
       return strdup ("function");
    if (strcmp (tname, "PARAMLIST") == 0)
@@ -123,7 +128,7 @@ static char* convert_non_term (char *tname) {
       return strdup ("ifelse");
    if (strcmp (tname, "RETURN") == 0 ||
          strcmp (tname, "RETURNVOID") == 0)
-         return strdup ("return");
+      return strdup ("return");
    return tname;
 }
 
@@ -217,4 +222,156 @@ void free_ast (astree* root) {
 void free_ast2 (astree* tree1, astree* tree2) {
    free_ast (tree1);
    free_ast (tree2);
+}
+
+static string get_param (astree *node, size_t child) {
+   string param = "";
+
+   if (node->children.size() < child) return "";
+
+   int param_index = 2; // Index of child[] with the parameters in it
+
+   // Node with parameter children
+   astree *parameter = node->children[param_index];
+   for (size_t child = 0; child < parameter->children.size();
+         ++child) {
+      int check_if_array = strcmp (get_yytname
+            (parameter->children[child]->children[0]->symbol),
+            "TOK_ARRAY");
+      if (check_if_array == 0) {
+         param += parameter->children[child]->children[0]->
+               children[0]->children[0]->lexinfo->c_str();
+         param.append ("[]");
+      } else {
+         param += parameter->children[child]->children[0]->
+               children[0]->lexinfo->c_str();
+      }
+
+      if (child + 1 < parameter->children.size()) param += ",";
+   }
+
+   return param;
+}
+
+static void add_param_sym (SymbolTable *table, astree *node,
+      size_t child) {
+   if (node->children.size() < child) return;
+
+   int fn_index = 2;
+   int struct_index = 1;
+   int param_index = 0; // Index of child[] with the parameters in it
+
+   if (child ==  FN_WITH_PARAM || child == PROTO_WITH_PARAM)
+      param_index = fn_index;
+   else
+      param_index = struct_index;
+
+   // Node with parameter children
+   astree *parameter = node->children[param_index];
+   for (size_t child = 0; child < parameter->children.size();
+         ++child) {
+      int check_if_array = strcmp (get_yytname
+            (parameter->children[child]->children[0]->symbol),
+            "TOK_ARRAY");
+      string lexinfo = parameter->children[child]->children[1]->
+            lexinfo->c_str();
+
+      string type = "";
+      if (check_if_array == 0) {
+         type = parameter->children[child]->children[0]->
+               children[0]->children[0]->lexinfo->c_str();
+         type.append ("[]");
+      } else {
+         type = parameter->children[child]->children[0]->
+               children[0]->lexinfo->c_str();
+      }
+
+      table->addSymbol (lexinfo, type);
+   }
+}
+
+static string get_type (astree *node) {
+   string type = "";
+   int check_if_array = strcmp (get_yytname
+         (node->children[0]->children[0]->symbol), "TOK_ARRAY");
+
+   if (check_if_array == 0) {
+      type = node->children[0]->children[0]->
+            children[0]->children[0]->lexinfo->c_str();
+      type.append ("[]");
+   } else {
+      type = node->children[0]->children[0]->
+            children[0]->lexinfo->c_str();
+   }
+
+   return type;
+}
+
+static void traverse_ast_rec (SymbolTable *table, SymbolTable *types,
+      astree* root, int depth) {
+   if (root == NULL) return;
+
+   int cmp_func = strcmp ((char *)get_yytname (root->symbol),
+         "TOK_FUNCTION") == 0;
+   int cmp_proto = strcmp ((char *)get_yytname (root->symbol),
+         "TOK_PROTOTYPE") == 0;
+   int cmp_vardecl = strcmp ((char *)get_yytname (root->symbol),
+         "TOK_VARDECL") == 0;
+   int cmp_while = strcmp ((char *)get_yytname (root->symbol),
+         "TOK_WHILE") == 0;
+   int cmp_struct = strcmp (get_yytname (root->symbol),
+         "TOK_STRUCT") == 0;
+   int cmp_if = strcmp ((char *)get_yytname (root->symbol),
+         "TOK_IF") == 0;
+   int cmp_ifelse = strcmp ((char *)get_yytname (root->symbol),
+         "TOK_IFELSE") == 0;
+
+   // If the node in the AST is a function
+   if (cmp_func || cmp_proto) {
+      int name_i = 1;  // Index of child[] for the name of function
+
+      string param = get_type (root);
+      param.append ("(");
+      if (cmp_func)
+         param.append (get_param(root, FN_WITH_PARAM));
+      else param.append (get_param(root, PROTO_WITH_PARAM));
+      param.append (")");
+      string lexinfo = root->children[name_i]->lexinfo->c_str();
+
+      table = table->enterFunction (lexinfo, param);
+      if (cmp_func) {
+         add_param_sym (table, root, FN_WITH_PARAM);
+      } else {
+         add_param_sym (table, root, PROTO_WITH_PARAM);
+      }
+   } else if (cmp_vardecl) {
+      int name_i = 1;  // Index of child[] for the name of function
+
+      string lexinfo = root->children[name_i]->lexinfo->c_str();
+      string type = get_type (root);
+      table->addSymbol (lexinfo, type);
+   } else if (cmp_while || cmp_if || cmp_ifelse) {
+      table = table->enterBlock();
+   } else if (cmp_struct) {
+      string lexinfo = root->children[0]->lexinfo->c_str();
+      types = types->enterFunction (lexinfo, "struct");
+      add_param_sym (types, root, STRUCT_WITH_PARAM);
+   }
+
+   for (size_t child = 0; child < root->children.size();
+         ++child) {
+      traverse_ast_rec (table, types, root->children[child],
+            depth + 1);
+   }
+
+   if (cmp_func || cmp_proto || cmp_while || cmp_if || cmp_ifelse)
+      table = table->getParent();
+   else if (cmp_struct)
+      types = types->getParent();
+}
+
+void traverse_ast (SymbolTable *global, SymbolTable *types,
+      astree* root) {
+   traverse_ast_rec (global, types, root, 0);
+   fflush (NULL);
 }
