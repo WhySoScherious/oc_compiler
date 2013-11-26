@@ -1,6 +1,5 @@
 #include <string.h>
 
-#include "astree.h"
 #include "auxlib.h"
 #include "lyutils.h"
 #include "symtable.h"
@@ -39,14 +38,15 @@ SymbolTable* SymbolTable::enterBlock() {
 // Example: To enter the function "void add(int a, int b)",
 //          call "currentSymbolTable->
 //                  enterFunction("add", "void(int,int)");
-SymbolTable* SymbolTable::enterFunction(string name, string signature){
+SymbolTable* SymbolTable::enterFunction(string name, string signature,
+      astree *node){
   // Add a new symbol using the signature as type
-  this->addSymbol(name, signature);
+  this->addSymbol(name, signature, node);
   // Create the child symbol table
   SymbolTable* child = new SymbolTable(this);
   // Store the symbol table under the name of the function
   // This allows us to retrieve the corresponding symbol table of a
-  // function and the coresponding function of a symbol table.
+  // function and the corresponding function of a symbol table.
   this->subscopes[name] = child;
   return child;
 }
@@ -55,9 +55,10 @@ SymbolTable* SymbolTable::enterFunction(string name, string signature){
 //
 // Example: To add the variable declaration "int i = 23;"
 //          use "currentSymbolTable->addSymbol("i", "int");
-void SymbolTable::addSymbol(string name, string type) {
+void SymbolTable::addSymbol(string name, string type, astree *node) {
   // Use the variable name as key for the identifier mapping
   this->mapping[name] = type;
+  this->ast_map[name] = node;
 }
 
 // Dumps the content of the symbol table and all its inner scopes
@@ -67,16 +68,28 @@ void SymbolTable::addSymbol(string name, string type) {
 void SymbolTable::dump(FILE* symfile, int depth) {
   // Create a new iterator for <string,string>
   std::map<string,string>::iterator it;
+
+  // Create a new iterator for <string,astree>
+  std::map<string,astree*>::iterator it_ast;
+
+  it_ast = this->ast_map.begin();
   // Iterate over all entries in the identifier mapping
   for (it = this->mapping.begin(); it != this->mapping.end(); ++it) {
     // The key of the mapping entry is the name of the symbol
     const char* name = it->first.c_str();
     // The value of the mapping entry is the type of the symbol
     const char* type = it->second.c_str();
+    // File number of location where defined
+    size_t file = it_ast->second->filenr;
+    // Line number of location where defined
+    size_t line = it_ast->second->linenr;
+    // character offset of location where defined
+    size_t character = it_ast->second->offset;
+
     // Print the symbol as "name {blocknumber} type"
     // indented by 3 spaces for each level
-    fprintf(symfile, "%*s%s {%d} %s\n", 3*depth, "", name,
-          this->number, type);
+    fprintf(symfile, "%*s%s (%zu.%zu.%zu) {%d} %s\n", 3*depth, "", name,
+          file, line, character, this->number, type);
     // If the symbol we just printed is actually a function
     // then we can find the symbol table of the function by the name
     if (this->subscopes.count(name) > 0) {
@@ -84,6 +97,7 @@ void SymbolTable::dump(FILE* symfile, int depth) {
       // before continuing the iteration
       this->subscopes[name]->dump(symfile, depth + 1);
     }
+    ++it_ast;
   }
   // Create a new iterator for <string,SymbolTable*>
   std::map<string,SymbolTable*>::iterator i;
@@ -92,7 +106,8 @@ void SymbolTable::dump(FILE* symfile, int depth) {
     // If we find the key of this symbol table in the symbol mapping
     // then it is actually a function scope which we already dumped
     // above
-    if (this->mapping.count(i->first) < 1) {
+    if (this->mapping.count(i->first) < 1 &&
+          this->ast_map.count(i->first) < 1) {
       // Otherwise, recursively dump the (non-function) symbol table
       i->second->dump(symfile, depth + 1);
     }

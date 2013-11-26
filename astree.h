@@ -10,16 +10,6 @@ using namespace std;
 #include "auxlib.h"
 #include "symtable.h"
 
-struct astree {
-   int symbol;               // token code
-   size_t filenr;            // index into filename stack
-   size_t linenr;            // line number from source code
-   size_t offset;            // offset of token with current line
-   const string* lexinfo;    // pointer to lexical information
-   vector<astree*> children; // children of this n-way node
-};
-
-
 astree* new_astree (int symbol, int filenr, int linenr,
                     int offset, const char* lexinfo);
 astree* adopt1 (astree* root, astree* child);

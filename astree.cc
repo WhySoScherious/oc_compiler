@@ -10,7 +10,6 @@
 #include "astree.h"
 #include "stringset.h"
 #include "lyutils.h"
-#include "symtable.h"
 
 static const size_t FN_WITH_PARAM = 4;
 static const size_t STRUCT_WITH_PARAM = 2;
@@ -260,6 +259,7 @@ static void add_param_sym (SymbolTable *table, astree *node,
    int fn_index = 2;
    int struct_index = 1;
    int param_index = 0; // Index of child[] with the parameters in it
+   astree *insert_sym = NULL;
 
    if (child ==  FN_WITH_PARAM || child == PROTO_WITH_PARAM)
       param_index = fn_index;
@@ -273,8 +273,8 @@ static void add_param_sym (SymbolTable *table, astree *node,
       int check_if_array = strcmp (get_yytname
             (parameter->children[child]->children[0]->symbol),
             "TOK_ARRAY");
-      string lexinfo = parameter->children[child]->children[1]->
-            lexinfo->c_str();
+      insert_sym = parameter->children[child]->children[1];
+      string lexinfo = insert_sym->lexinfo->c_str();
 
       string type = "";
       if (check_if_array == 0) {
@@ -286,7 +286,7 @@ static void add_param_sym (SymbolTable *table, astree *node,
                children[0]->lexinfo->c_str();
       }
 
-      table->addSymbol (lexinfo, type);
+      table->addSymbol (lexinfo, type, insert_sym);
    }
 }
 
@@ -311,6 +311,7 @@ static void traverse_ast_rec (SymbolTable *table, SymbolTable *types,
       astree* root, int depth) {
    if (root == NULL) return;
 
+   astree *insert_sym = NULL;
    int cmp_func = strcmp ((char *)get_yytname (root->symbol),
          "TOK_FUNCTION") == 0;
    int cmp_proto = strcmp ((char *)get_yytname (root->symbol),
@@ -335,10 +336,12 @@ static void traverse_ast_rec (SymbolTable *table, SymbolTable *types,
       if (cmp_func)
          param.append (get_param(root, FN_WITH_PARAM));
       else param.append (get_param(root, PROTO_WITH_PARAM));
-      param.append (")");
-      string lexinfo = root->children[name_i]->lexinfo->c_str();
 
-      table = table->enterFunction (lexinfo, param);
+      param.append (")");
+      insert_sym = root->children[name_i];
+      string lexinfo = insert_sym->lexinfo->c_str();
+
+      table = table->enterFunction (lexinfo, param, insert_sym);
       if (cmp_func) {
          add_param_sym (table, root, FN_WITH_PARAM);
       } else {
@@ -347,14 +350,16 @@ static void traverse_ast_rec (SymbolTable *table, SymbolTable *types,
    } else if (cmp_vardecl) {
       int name_i = 1;  // Index of child[] for the name of function
 
-      string lexinfo = root->children[name_i]->lexinfo->c_str();
+      insert_sym = root->children[name_i];
+      string lexinfo = insert_sym->lexinfo->c_str();
       string type = get_type (root);
-      table->addSymbol (lexinfo, type);
+      table->addSymbol (lexinfo, type, insert_sym);
    } else if (cmp_while || cmp_if || cmp_ifelse) {
       table = table->enterBlock();
    } else if (cmp_struct) {
-      string lexinfo = root->children[0]->lexinfo->c_str();
-      types = types->enterFunction (lexinfo, "struct");
+      insert_sym = root->children[0];
+      string lexinfo = insert_sym->lexinfo->c_str();
+      types = types->enterFunction (lexinfo, "struct", insert_sym);
       add_param_sym (types, root, STRUCT_WITH_PARAM);
    }
 
