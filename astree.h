@@ -20,6 +20,7 @@ void yyprint (FILE* outfile, unsigned short toknum,
               astree* yyvaluep);
 void free_ast (astree* tree);
 void free_ast2 (astree* tree1, astree* tree2);
+string get_type (astree *node);
 void traverse_ast (SymbolTable *global, SymbolTable *types,
       astree* root);
 

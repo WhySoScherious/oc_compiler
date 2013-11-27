@@ -77,7 +77,12 @@ public:
   // Look up name in this and all surrounding blocks and return its type.
   //
   // Returns the empty string "" if variable was not found
-  string lookup(string name);
+  string lookup(string name, size_t linenr);
+
+  // Look up name in child block and return its type.
+  //
+  // Returns the empty string "" if variable was not found
+  SymbolTable* lookup_param(string type, size_t linenr);
 
   // Looks through the symbol table chain to find the function which
   // surrounds the scope and returns its signature

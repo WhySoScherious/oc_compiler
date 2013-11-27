@@ -290,7 +290,7 @@ static void add_param_sym (SymbolTable *table, astree *node,
    }
 }
 
-static string get_type (astree *node) {
+string get_type (astree *node) {
    string type = "";
    int check_if_array = strcmp (get_yytname
          (node->children[0]->children[0]->symbol), "TOK_ARRAY");
