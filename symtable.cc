@@ -153,6 +153,16 @@ SymbolTable* SymbolTable::lookup_param(string type, size_t linenr) {
    return NULL;
 }
 
+// Enter the child block of the current SymbolTable*
+//
+// Returns NULL if function scope not found
+/*SymbolTable* SymbolTable::enter_block(size_t linenr) {
+   return this->subscopes.begin();
+
+   errprintf("%zu: No child blocks\n", linenr);
+   return NULL;
+}*/
+
 // Looks through the symbol table chain to find the function which
 // surrounds the scope and returns its signature
 // or "" if there is no surrounding function.
