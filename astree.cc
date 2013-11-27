@@ -77,6 +77,7 @@ static bool is_non_term (char *tname) {
          strcmp (tname, "IFELSE") == 0 ||
          strcmp (tname, "RETURN") == 0 ||
          strcmp (tname, "RETURNVOID") == 0 ||
+         strcmp (tname, "NEWARRAY") == 0 ||
          strcmp (tname, "STRUCT") == 0) {
       return true;
    }
@@ -119,6 +120,8 @@ static char* convert_non_term (char *tname) {
       return strdup ("block");
    if (strcmp (tname, "ALLOCATOR") == 0)
       return strdup ("allocator");
+   if (strcmp (tname, "NEWARRAY") == 0)
+      return strdup ("newarray");
    if (strcmp (tname, "IF") == 0)
       return strdup ("if");
    if (strcmp (tname, "WHILE") == 0)

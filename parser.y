@@ -298,7 +298,7 @@ allocator : TOK_NEW TOK_STRING '(' expr ')'
                               $2->symbol = TOK_TYPEID;
                               $$ = adopt1 ($1, $2); }
           | TOK_NEW basetype '[' expr ']'
-                            { $1->symbol = TOK_ALLOCATOR;
+                            { $1->symbol = TOK_NEWARRAY;
                               $$ = adopt2 ($1, $2, $4); }
           ;
 
