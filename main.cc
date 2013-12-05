@@ -107,43 +107,11 @@ void insert_stringset() {
    fclose (str_file);
 }
 
-string get_basetype (astree* node) {
-   if (strcmp ((char *)get_yytname (node->symbol),
-         "TOK_VOID") == 0) {
-      return "void";
-   } else if (strcmp ((char *)get_yytname (node->symbol),
-         "TOK_BOOL") == 0) {
-      return "bool";
-   } else if (strcmp ((char *)get_yytname (node->symbol),
-         "TOK_CHAR") == 0) {
-      return "char";
-   } else if (strcmp ((char *)get_yytname (node->symbol),
-         "TOK_INT") == 0) {
-      return "int";
-   } else if (strcmp ((char *)get_yytname (node->symbol),
-         "TOK_STRING") == 0) {
-      return "string";
-   }
-
-   return NULL;
-}
-
-string get_child_type (astree *node) {
-   string type = "";
-   int check_if_array = strcmp (get_yytname
-         (node->children[0]->symbol), "TOK_ARRAY");
-
-   if (check_if_array == 0) {
-      type = node->children[0]->children[0]->children[0]->
-            lexinfo->c_str();
-      type.append ("[]");
-   } else {
-      type = node->children[0]->children[0]->lexinfo->c_str();
-   }
-
-   return type;
-}
-
+/*
+ * Checks whether two types are equivalent and allowed with oc.
+ * Returns "" if they don't match or not allowed and prints error
+ * message.
+ */
 string are_compatible (string name1, string name2, size_t linenr) {
    if (strcmp (name1.c_str(), "bool") == 0 ||
          strcmp (name1.c_str(), "bool[]") == 0) {
@@ -168,6 +136,7 @@ string are_compatible (string name1, string name2, size_t linenr) {
       if (strcmp (name2.c_str(), "") == 0) {
          errprintf ("%zu: %s not found\n", linenr, name2.c_str());
       }
+
       int comp = strcmp (name1.c_str(), name2.c_str());
 
       if (strcmp (name2.c_str(), "int") == 0 ||
@@ -198,9 +167,15 @@ string are_compatible (string name1, string name2, size_t linenr) {
          return "string";
       }
 
+      if (strcmp (name1.c_str(), "string[]") == 0 &&
+            strcmp (name2.c_str(), "char") == 0) {
+         return "char";
+      }
+
       int comp = strcmp (name1.c_str(), name2.c_str());
       if (comp != 0) {
-         errprintf ("%zu: Invalid conversion to string\n", linenr);
+         errprintf ("%zu: Invalid conversion to string (%s,%s)\n",
+               linenr, name1.c_str(), name2.c_str());
       } else {
          return "string";
       }
@@ -226,13 +201,21 @@ string are_compatible (string name1, string name2, size_t linenr) {
    }
 
    if (strcmp (name1.c_str(), name2.c_str()) == 0) {
-      return "name1";
+      return name1.c_str();
    }
 
+   if (strcmp (name2.c_str(), "null") == 0) {
+      return name1.c_str();
+   }
+
+   errprintf ("%zu: %s != %s\n", linenr, name1.c_str(), name2.c_str());
    set_exitstatus (EXIT_FAILURE);
    return "";
 }
 
+/*
+ * Returns the constant type passed.
+ */
 string check_constant (astree* node) {
    astree* constant = node->children[0];
    string symbol = (char *)get_yytname (constant->symbol);
@@ -253,6 +236,9 @@ string check_constant (astree* node) {
    return "";
 }
 
+/*
+ * Returns the variable type passed.
+ */
 string check_variable (astree* node, SymbolTable* types,
       SymbolTable* global) {
    string name = "";
@@ -266,21 +252,18 @@ string check_variable (astree* node, SymbolTable* types,
       return global->lookup(name, node->linenr);
    }
 
-   int field_index = 1;
-
-   astree* fn = ident_name->children[0]->children[0];
-   string fn_name = fn->lexinfo->c_str();
-   string fn_type = global->lookup(fn_name, node->linenr);
    if (field_cmp) {
-      SymbolTable* getScope = types->lookup_param(fn_type,
+      int field_index = 1;
+      string fn_name = check_expr (ident_name->children[0], types,
+            global);
+      SymbolTable* getScope = types->lookup_param(fn_name,
             node->linenr);
+      string fn_type = ident_name->children[field_index]->lexinfo->
+            c_str();
 
-      if (getScope != NULL) {
-         ident_name = ident_name->children[field_index];
-         name = ident_name->lexinfo->c_str();
-         return getScope->lookup(name, node->linenr);
-      }
-   } else {
+      if (getScope != NULL)
+         return getScope->lookup(fn_type, node->linenr);
+   } else if (array_cmp) {
       int array_index = 1;
       astree* check_int = ident_name->children[array_index];
 
@@ -288,6 +271,10 @@ string check_variable (astree* node, SymbolTable* types,
             "int") != 0) {
          errprintf ("%zu: Must be [int]\n", node->linenr);
       } else {
+         astree* fn = ident_name->children[0];
+         string fn_type = check_expr (fn, types, global);
+         if (strcmp (fn_type.c_str(), "string") == 0)
+            return "char";
          return fn_type;
       }
    }
@@ -295,6 +282,9 @@ string check_variable (astree* node, SymbolTable* types,
    return "";
 }
 
+/*
+ * Returns the type of the function call that was passed.
+ */
 string check_call (astree* node, SymbolTable* global) {
    astree* ident = node->children[0];
    string ident_name = ident->lexinfo->c_str();
@@ -313,7 +303,8 @@ string check_unop (astree* node, SymbolTable* types,
       string ord = check_expr (node->children[0]->children[0], types,
             global);
 
-      if (strcmp (ord.c_str(), "int") != 0) {
+      if (strcmp (ord.c_str(), "int") != 0 &&
+            strcmp (ord.c_str(), "char") != 0) {
          errprintf ("%zu: Must be [int]\n", node->linenr);
       } else
          return "int";
@@ -332,6 +323,9 @@ string check_unop (astree* node, SymbolTable* types,
          global);
 }
 
+/*
+ * Returns the allocated type that was passed.
+ */
 string check_allocator (astree* node, SymbolTable* global) {
    string vari_name = node->children[0]->lexinfo->c_str();
    string const_type = get_yytname (node->children[0]->symbol);
@@ -342,6 +336,9 @@ string check_allocator (astree* node, SymbolTable* global) {
       return vari_name;
 }
 
+/*
+ * Returns the type of the expression passed.
+ */
 string check_expr (astree* node, SymbolTable* types,
       SymbolTable* global) {
    if (strcmp ((char *)get_yytname (node->symbol),
@@ -376,6 +373,9 @@ string check_expr (astree* node, SymbolTable* types,
    return "";
 }
 
+/*
+ * Returns the binary operation type passed.
+ */
 string check_binop (astree* node, SymbolTable* types,
       SymbolTable* global) {
    string expr1 = check_expr (node->children[0], types, global);
@@ -383,6 +383,9 @@ string check_binop (astree* node, SymbolTable* types,
    return are_compatible(expr1, expr2, node->linenr);
 }
 
+/*
+ * Returns the basetype of the node passed.
+ */
 string check_basetype (astree* node, SymbolTable* global) {
    astree* constant = node->children[0];
    string symbol = (char *)get_yytname (constant->symbol);
@@ -405,6 +408,9 @@ string check_basetype (astree* node, SymbolTable* global) {
    return "";
 }
 
+/*
+ * Returns the type of array that was initialized.
+ */
 string check_newarray (astree* node, SymbolTable* types,
       SymbolTable* global) {
    string array_size = check_expr (node->children[1], types, global);
@@ -418,6 +424,9 @@ string check_newarray (astree* node, SymbolTable* types,
    return array_type;
 }
 
+/*
+ * Returns the return type passed.
+ */
 string check_return (astree* node, SymbolTable* types,
       SymbolTable* global) {
    if (node->children.size() == 0) {
@@ -427,6 +436,9 @@ string check_return (astree* node, SymbolTable* types,
    }
 }
 
+/*
+ * Returns the type of the comparision statement for while loop passed.
+ */
 string check_while (astree* node, SymbolTable* types,
       SymbolTable* global) {
    string compare = check_expr (node->children[0], types, global);
@@ -440,6 +452,9 @@ string check_while (astree* node, SymbolTable* types,
    return check_statement (node->children[1], types, global);
 }
 
+/*
+ * Returns the type of the vardecl statement passed.
+ */
 string check_vardecl (astree* node, SymbolTable* types,
       SymbolTable* global) {
    int name_index = 1;
@@ -452,6 +467,9 @@ string check_vardecl (astree* node, SymbolTable* types,
    return are_compatible (type, expr, node->linenr);
 }
 
+/*
+ * Returns the type of the if else statement passed.
+ */
 string check_ifelse (astree* node, SymbolTable* types,
       SymbolTable* global) {
    string compare = check_expr (node->children[0], types, global);
@@ -462,13 +480,22 @@ string check_ifelse (astree* node, SymbolTable* types,
    }
 
    check_statement (node->children[1], types, global);
+
    if (node->children.size() > 2) {
+
       check_statement (node->children[2], types, global);
+
+      if (global->getParent() != NULL) {
+         global = global->getParent();
+      }
    }
 
    return "bool";
 }
 
+/*
+ * Returns the type of the statement passed.
+ */
 string check_statement (astree* node, SymbolTable* types,
       SymbolTable* global) {
    if (strcmp ((char *)get_yytname (node->symbol),
@@ -480,7 +507,9 @@ string check_statement (astree* node, SymbolTable* types,
       return check_while(node, types, global);
    }
    if (strcmp ((char *)get_yytname (node->symbol),
-         "TOK_IFELSE") == 0) {
+         "TOK_IFELSE") == 0 ||
+         strcmp ((char *)get_yytname (node->symbol),
+               "TOK_IF") == 0) {
       return check_ifelse(node, types, global);
    }
    if (strcmp ((char *)get_yytname (node->symbol),
@@ -495,13 +524,62 @@ string check_statement (astree* node, SymbolTable* types,
    return "";
 }
 
+/*
+ * Returns the type of the block passed.
+ */
+string check_block (astree* node, SymbolTable* types,
+      SymbolTable* global) {
+   if (strcmp ((char *)get_yytname (node->children[0]->symbol),
+         "TOK_BLOCK") == 0) {
+      return check_block (node->children[0], types, global);
+   } else {
+      return check_statement (node->children[0], types, global);
+   }
+}
+
+/*
+ * Traverses through the AST, performing typechecks for each line
+ * of the oc code.
+ */
 void typecheck_rec (astree* node, SymbolTable* types,
       SymbolTable* global, int depth) {
    if (node == NULL) return;
 
    for (size_t child = 0; child < node->children.size();
          ++child) {
+      SymbolTable* childBlock;
+      if (strcmp ((char *)get_yytname (node->symbol),
+            "TOK_FUNCTION") == 0) {
+         int ident_index = 1;
+
+         astree* block_node = node->children[2];
+         if (strcmp ((char *)get_yytname (block_node->symbol),
+               "TOK_PARAMETER") == 0) {
+            block_node = node->children[3];
+         }
+
+         string fn_name = node->children[ident_index]->lexinfo->c_str();
+         global = global->lookup_param(fn_name, node->linenr);
+      } else if (strcmp ((char *)get_yytname (node->symbol),
+            "TOK_IF") == 0 ||
+            strcmp ((char *)get_yytname (node->symbol),
+                  "TOK_WHILE") == 0 ||
+                  strcmp ((char *)get_yytname (node->symbol),
+                        "TOK_IFELSE") == 0) {
+         childBlock = global->enter_block (node->blockNum,
+               node->linenr);
+         if (childBlock != NULL)
+            global = childBlock;
+      }
+
       typecheck_rec (node->children[child], types, global, depth + 1);
+
+      if (childBlock != NULL && (strcmp ((char *)get_yytname (node->symbol),
+            "TOK_FUNCTION") == 0 ||
+            strcmp ((char *)get_yytname (node->symbol),
+                  "TOK_WHILE") == 0)) {
+         global = global->getParent();
+      }
    }
 
    if (strcmp ((char *)get_yytname (node->symbol),
@@ -514,19 +592,6 @@ void typecheck_rec (astree* node, SymbolTable* types,
 
       //fprintf (stderr, "%s:%s\n", expr1.c_str(), expr2.c_str());
       are_compatible (expr1, expr2, node->linenr);
-   } else if (strcmp ((char *)get_yytname (node->symbol),
-         "TOK_FUNCTION") == 0) {
-      int ident_index = 1;
-
-      string fn_name = node->children[ident_index]->lexinfo->c_str();
-      global = global->lookup_param(fn_name, node->linenr);
-
-      astree* block_node = node->children[2];
-      if (strcmp ((char *)get_yytname (block_node->symbol),
-            "TOK_PARAMETER") == 0) {
-         block_node = node->children[3];
-      }
-      string block = check_statement (block_node, types, global);
    }
 }
 
@@ -577,7 +642,10 @@ int main (int argc, char **argv) {
 
    parsecode = yyparse();
 
+   // Symbol table with struct types
    SymbolTable *types = new SymbolTable(NULL);
+
+   // Global symbol table
    SymbolTable *global = new SymbolTable(NULL);
    FILE *ast_file = fopen ((prog_name + ".ast").c_str(), "w");
    FILE *sym_file = fopen ((prog_name + ".sym").c_str(), "w");
@@ -587,9 +655,10 @@ int main (int argc, char **argv) {
    } else {
       dump_astree (ast_file, yyparse_astree);
       DEBUGSTMT ('a', dump_astree (stderr, yyparse_astree); );
+
+      // Generate the symbol table and dump to program.sym file
       traverse_ast (global, types, yyparse_astree);
       global->dump (sym_file, 0);
-      types->dump (sym_file, 0);
    }
 
    insert_stringset();

@@ -226,6 +226,9 @@ void free_ast2 (astree* tree1, astree* tree2) {
    free_ast (tree2);
 }
 
+/*
+ * Returns the parameters of the type being passed
+ */
 static string get_param (astree *node, size_t child) {
    string param = "";
 
@@ -255,6 +258,9 @@ static string get_param (astree *node, size_t child) {
    return param;
 }
 
+/*
+ * Adds parameters to the symbol table.
+ */
 static void add_param_sym (SymbolTable *table, astree *node,
       size_t child) {
    if (node->children.size() < child) return;
@@ -310,6 +316,9 @@ string get_type (astree *node) {
    return type;
 }
 
+/*
+ * Traverses through the AST to build the symbol table.
+ */
 static void traverse_ast_rec (SymbolTable *table, SymbolTable *types,
       astree* root, int depth) {
    if (root == NULL) return;
@@ -345,6 +354,7 @@ static void traverse_ast_rec (SymbolTable *table, SymbolTable *types,
       string lexinfo = insert_sym->lexinfo->c_str();
 
       table = table->enterFunction (lexinfo, param, insert_sym);
+      root->blockNum = table->N - 1;
       if (cmp_func) {
          add_param_sym (table, root, FN_WITH_PARAM);
       } else {
@@ -359,6 +369,7 @@ static void traverse_ast_rec (SymbolTable *table, SymbolTable *types,
       table->addSymbol (lexinfo, type, insert_sym);
    } else if (cmp_while || cmp_if || cmp_ifelse) {
       table = table->enterBlock();
+      root->blockNum = table->N - 1;
    } else if (cmp_struct) {
       insert_sym = root->children[0];
       string lexinfo = insert_sym->lexinfo->c_str();

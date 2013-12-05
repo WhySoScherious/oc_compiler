@@ -14,6 +14,7 @@ struct astree {
    size_t offset;            // offset of token with current line
    const string* lexinfo;    // pointer to lexical information
    vector<astree*> children; // children of this n-way node
+   int blockNum;             // Block number of node in SymbolTable
 };
 
 // A symbol table for a single scope, i.e. block.
@@ -84,7 +85,7 @@ public:
    // Returns the empty string "" if variable was not found
    SymbolTable* lookup_param(string type, size_t linenr);
 
-   //SymbolTable* enter_block (size_t linenr);
+   SymbolTable* enter_block (int blockN, size_t linenr);
 
    // Looks through the symbol table chain to find the function which
    // surrounds the scope and returns its signature

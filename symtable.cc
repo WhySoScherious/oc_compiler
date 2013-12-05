@@ -135,7 +135,7 @@ string SymbolTable::lookup(string name, size_t linenr) {
    }
 }
 
-// Look up name in child block and return its type.
+// Look up name in child block and if found, return the block.
 //
 // Returns NULL if function scope not found
 SymbolTable* SymbolTable::lookup_param(string type, size_t linenr) {
@@ -144,7 +144,6 @@ SymbolTable* SymbolTable::lookup_param(string type, size_t linenr) {
    for (it = this->subscopes.begin(); it != this->subscopes.end(); ++it) {
       // If we find the requested fn scope
       if (strcmp (it->first.c_str(), type.c_str()) == 0) {
-         // Then it must be the surrounding function, so return its type/signature
          return it->second;
       }
    }
@@ -156,12 +155,14 @@ SymbolTable* SymbolTable::lookup_param(string type, size_t linenr) {
 // Enter the child block of the current SymbolTable*
 //
 // Returns NULL if function scope not found
-/*SymbolTable* SymbolTable::enter_block(size_t linenr) {
-   return this->subscopes.begin();
+SymbolTable* SymbolTable::enter_block(int blockN, size_t linenr) {
+   char buffer[10];
+   sprintf(&buffer[0], "%d", blockN);
+   if (this->subscopes[buffer] != NULL)
+      return this->subscopes[buffer];
 
-   errprintf("%zu: No child blocks\n", linenr);
    return NULL;
-}*/
+}
 
 // Looks through the symbol table chain to find the function which
 // surrounds the scope and returns its signature
