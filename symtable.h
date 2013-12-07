@@ -51,19 +51,24 @@ public:
 
    SymbolTable *getParent();
 
-   // Creates a new empty table beneath the current table and returns it.
+   map<string,string> getMapping();
+
+   // Creates a new empty table beneath the current table and returns
+   // it.
    SymbolTable* enterBlock();
 
    // Adds the function name as symbol to the current table
    // and creates a new empty table beneath the current one.
    //
    // Example: To enter the function "void add(int a, int b)",
-   //          use "currentSymbolTable->enterFunction("add", "void(int,int)");
+   //          use "currentSymbolTable->enterFunction("add",
+   //                                               "void(int,int)");
    SymbolTable* enterFunction(string name,
          string signature,
          astree *node);
 
-   // Add a symbol with the provided name and type to the current table.
+   // Add a symbol with the provided name and type to the current
+   // table.
    //
    // Example: To add the variable declaration "int i = 23;"
    //          use "currentSymbolTable->addSymbol("i", "int");
@@ -75,23 +80,31 @@ public:
    // Example: "global_symtable->dump(symfile, 0)"
    void dump(FILE* symfile, int depth);
 
-   // Look up name in this and all surrounding blocks and return its type.
+   // Look up name in this and all surrounding blocks and return its
+   // type.
    //
    // Returns the empty string "" if variable was not found
    string lookup(string name, size_t linenr);
+
+   string lookup_oil (string name);
+
+   bool is_global (string name);
 
    // Look up name in child block and return its type.
    //
    // Returns the empty string "" if variable was not found
    SymbolTable* lookup_param(string type, size_t linenr);
 
-   SymbolTable* enter_block (int blockN, size_t linenr);
+   SymbolTable* lookup_param_oil(string type);
+
+   SymbolTable* enter_block (int blockN);
 
    // Looks through the symbol table chain to find the function which
    // surrounds the scope and returns its signature
    // or "" if there is no surrounding function.
    //
-   // Use parentFunction(NULL) to get the parentFunction of the current block.
+   // Use parentFunction(NULL) to get the parentFunction of the current
+   // block.
    string parentFunction(SymbolTable* innerScope);
 
    // Running id number for symbol tables

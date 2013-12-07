@@ -18,6 +18,10 @@ SymbolTable* SymbolTable::getParent() {
    return this->parent;
 }
 
+map<string,string> SymbolTable::getMapping() {
+   return this->mapping;
+}
+
 // Creates a new empty table beneath the current table and returns it.
 SymbolTable* SymbolTable::enterBlock() {
    // Create a new symbol table beneath the current one
@@ -88,7 +92,8 @@ void SymbolTable::dump(FILE* symfile, int depth) {
 
       // Print the symbol as "name {blocknumber} type"
       // indented by 3 spaces for each level
-      fprintf(symfile, "%*s%s (%zu.%zu.%zu) {%d} %s\n", 3*depth, "", name,
+      fprintf(symfile, "%*s%s (%zu.%zu.%zu) {%d} %s\n", 3*depth, "",
+            name,
             file, line, character, this->number, type);
       // If the symbol we just printed is actually a function
       // then we can find the symbol table of the function by the name
@@ -141,7 +146,8 @@ string SymbolTable::lookup(string name, size_t linenr) {
 SymbolTable* SymbolTable::lookup_param(string type, size_t linenr) {
    std::map<string,SymbolTable*>::iterator it;
    // Iterate over all the subscopes of the current scopes
-   for (it = this->subscopes.begin(); it != this->subscopes.end(); ++it) {
+   for (it = this->subscopes.begin(); it != this->subscopes.end();
+         ++it) {
       // If we find the requested fn scope
       if (strcmp (it->first.c_str(), type.c_str()) == 0) {
          return it->second;
@@ -152,10 +158,67 @@ SymbolTable* SymbolTable::lookup_param(string type, size_t linenr) {
    return NULL;
 }
 
+// Look up name in this and all surrounding blocks and return its type.
+//
+// Returns the empty string "" if variable was not found
+string SymbolTable::lookup_oil(string name) {
+   // Look up "name" in the identifier mapping of the current block
+   if (this->mapping.count(name) > 0) {
+      // If we found an entry, just return its type
+      return this->mapping[name];
+   }
+   // Otherwise, if there is a surrounding scope
+   if (this->parent != NULL) {
+      // look up the symbol in the surrounding scope
+      // and return its reported type
+      return this->parent->lookup_oil (name);
+   } else {
+      // Return "" if the global symbol table has no entry
+      return "";
+   }
+}
+
+// Look up name in child block and if found, return the block.
+//
+// Returns NULL if function scope not found
+SymbolTable* SymbolTable::lookup_param_oil(string type) {
+   std::map<string,SymbolTable*>::iterator it;
+   // Iterate over all the subscopes of the current scopes
+   for (it = this->subscopes.begin(); it != this->subscopes.end();
+         ++it) {
+      // If we find the requested fn scope
+      if (strcmp (it->first.c_str(), type.c_str()) == 0) {
+         return it->second;
+      }
+   }
+
+   return NULL;
+}
+
+// Look up name in this block and if found, return true.
+// Otherwise, it's a global variable
+// Returns false if not found
+bool SymbolTable::is_global (string name) {
+   if (this->parent != NULL) {
+      // look up the symbol in the surrounding scope
+      // and return its reported type
+      return this->parent->is_global(name);
+   }
+
+   // Look up "name" in the identifier mapping of the current block
+   if (this->mapping.count(name) > 0) {
+      // If we found an entry, just return its type
+      return true;
+   } else {
+      // Return "" if the global symbol table has no entry
+      return false;
+   }
+}
+
 // Enter the child block of the current SymbolTable*
 //
 // Returns NULL if function scope not found
-SymbolTable* SymbolTable::enter_block(int blockN, size_t linenr) {
+SymbolTable* SymbolTable::enter_block(int blockN) {
    char buffer[10];
    sprintf(&buffer[0], "%d", blockN);
    if (this->subscopes[buffer] != NULL)
@@ -168,16 +231,20 @@ SymbolTable* SymbolTable::enter_block(int blockN, size_t linenr) {
 // surrounds the scope and returns its signature
 // or "" if there is no surrounding function.
 //
-// Use parentFunction(NULL) to get the parentFunction of the current block.
+// Use parentFunction(NULL) to get the parentFunction of the current
+// block.
 string SymbolTable::parentFunction(SymbolTable* innerScope) {
    // Create a new <string,SymbolTable*> iterator
    std::map<string,SymbolTable*>::iterator it;
    // Iterate over all the subscopes of the current scopes
-   for (it = this->subscopes.begin(); it != this->subscopes.end(); ++it) {
-      // If we find the requested inner scope and if its name is a symbol
-      // in the identifier mapping
-      if (it->second == innerScope && this->mapping.count(it->first) > 0) {
-         // Then it must be the surrounding function, so return its type/signature
+   for (it = this->subscopes.begin(); it != this->subscopes.end();
+         ++it) {
+      // If we find the requested inner scope and if its name is a
+      // symbol in the identifier mapping
+      if (it->second == innerScope &&
+            this->mapping.count(it->first) > 0) {
+         // Then it must be the surrounding function, so return its
+         // type/signature
          return this->mapping[it->first];
       }
    }
@@ -205,7 +272,8 @@ vector<string> SymbolTable::parseSignature(string sig) {
    // Find first opening parenthesis
    size_t left = sig.find_first_of('(');
    if (left == string::npos) {
-      // Print error and return empty results if not a function signature
+      // Print error and return empty results if not a function
+      // signature
       errprintf("%s is not a function\n", sig.c_str());
       return results;
    }
@@ -214,7 +282,8 @@ vector<string> SymbolTable::parseSignature(string sig) {
    // Starting with the position of the left parenthesis
    // Find the next comma or closing parenthesis at each step
    // and stop when the end is reached.
-   for (size_t i = left + 1; i < sig.length()-1; i = sig.find_first_of(",)", i) + 1) {
+   for (size_t i = left + 1; i < sig.length()-1;
+         i = sig.find_first_of(",)", i) + 1) {
       // At each step, get the substring between the current position
       // and the next comma or closing parenthesis
       results.push_back(sig.substr(i, sig.find_first_of(",)", i) - i));

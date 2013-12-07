@@ -9,9 +9,10 @@ VALGRIND  = valgrind --leak-check=full --show-reachable=yes
 #
 # Definitions of list of files:
 #
-HSOURCES  = astree.h  lyutils.h  auxlib.h  stringset.h symtable.h
+HSOURCES  = astree.h  lyutils.h  auxlib.h  stringset.h symtable.h \
+            typecheck.h oilprint.h
 CSOURCES  = astree.cc lyutils.cc auxlib.cc stringset.cc main.cc \
-            symtable.cc
+            symtable.cc typecheck.cc oilprint.cc
 LSOURCES  = scanner.l
 YSOURCES  = parser.y
 ETCSRC    = oclib.oh README Makefile 
@@ -30,7 +31,7 @@ REPORTS   = ${LREPORT} ${YREPORT}
 ALLSRC    = ${ETCSRC} ${YSOURCES} ${LSOURCES} ${HSOURCES} ${CSOURCES}
 TESTINS   = ${wildcard test?.oc}
 LISTSRC   = ${ALLSRC} ${HYGEN}
-SUBMIT = submit cmps104a-wm.f13 asg4
+SUBMIT = submit cmps104a-wm.f13 asg5
 
 #
 # Definitions of the compiler and compilation options:
@@ -100,7 +101,8 @@ clean :
 		${patsubst %, ${test}.%, out err}}
 
 spotless : clean
-	- rm ${EXECBIN} *.str *.tok *.ast *.sym List.*.ps List.*.pdf
+	- rm ${EXECBIN} *.str *.tok *.ast *.sym *.oil List.*.ps \
+          List.*.pdf
 
 
 #
