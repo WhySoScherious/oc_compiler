@@ -15,7 +15,7 @@ CSOURCES  = astree.cc lyutils.cc auxlib.cc stringset.cc main.cc \
             symtable.cc typecheck.cc oilprint.cc
 LSOURCES  = scanner.l
 YSOURCES  = parser.y
-ETCSRC    = oclib.oh README Makefile 
+ETCSRC    = oclib.oh oclib.c README Makefile 
 CLGEN     = yylex.cc
 HYGEN     = yyparse.h
 CYGEN     = yyparse.cc

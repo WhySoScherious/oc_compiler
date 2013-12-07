@@ -172,8 +172,10 @@ int main (int argc, char **argv) {
       // Typecheck program
       typecheck_rec (yyparse_astree, types, global, 0);
 
-      // Generate the intermediate oil code
-      generate_oil (oil_file, yyparse_astree, types, global);
+      // If typecheck passed, generate the intermediate oil code
+      if (get_exitstatus() == 0) {
+         generate_oil (oil_file, yyparse_astree, types, global);
+      }
    }
 
    insert_stringset();
@@ -183,6 +185,14 @@ int main (int argc, char **argv) {
    fclose (ast_file);
    fclose (sym_file);
    fclose (oil_file);
+
+   // Compile the intermediate code
+   string command = "gcc -g -o ";
+   command.append (prog_name);
+   command.append (" -x c ");
+   command.append (prog_name);
+   command.append (".oil oclib.c");
+   system(command.c_str());
 
    if (pclose (yyin)) {
       set_exitstatus (EXIT_FAILURE);

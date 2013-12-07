@@ -15,11 +15,15 @@
 #include "typecheck.h"
 
 const int INDENT = 8;
+// Maps name to pointer
+map<string,string> struct_map;
 int blocknr = 1;
 int b_counter = 1;
 int i_counter = 1;
 int p_counter = 1;
 int s_counter = 1;
+int ifelse_counter = 1;
+int while_counter = 1;
 int stmt_label = 1;
 
 enum Category { GLOBAL, LOCAL, STRUCT, FIELD };
@@ -119,6 +123,19 @@ string converted_type (string type) {
 
    return type + " ";
 }
+
+string convert_expr (string expr, SymbolTable* global) {
+   if (strcmp (global->lookup_oil(expr).c_str(), "") != 0) {
+      if (global->is_global (expr)) {
+         return convert_ident (expr, "", GLOBAL);
+      } else {
+         return convert_ident (expr, "", LOCAL);
+      }
+   }
+
+   return expr;
+}
+
 /*
  * Prints struct declarations to outfile.
  */
@@ -187,7 +204,7 @@ string oil_variable (FILE* outfile, astree* node, SymbolTable* types,
       string fn_type = ident_name->children[field_index]->lexinfo->
             c_str();
 
-      return convert_ident (fn_name, fn_type, FIELD);
+      return convert_ident (fn_name, "", category) + "." + fn_type;
    } else if (array_cmp) {
       astree* fn = ident_name->children[0];
       return convert_ident (fn->lexinfo->c_str(), "", category);
@@ -207,30 +224,34 @@ string oil_binop (FILE* outfile, astree* node, SymbolTable* types,
    string expr2 = oil_expr (outfile, node->children[2], types, global,
          category, depth);
 
-   string type = check_expr (node->children[2], types, global);
-   string register_cat = reg_category (type);
-   type = converted_type (type);
+   int is_conditional = strcmp (binop.c_str(), "<") == 0 ||
+         strcmp (binop.c_str(), "<=") == 0 ||
+         strcmp (binop.c_str(), ">") == 0 ||
+         strcmp (binop.c_str(), ">=") == 0 ||
+         strcmp (binop.c_str(), "==") == 0 ||
+         strcmp (binop.c_str(), "!=") == 0;
 
-   if (strcmp (global->lookup_oil(expr1).c_str(), "") != 0) {
-      if (global->is_global (expr1)) {
-         expr1 = convert_ident (expr1, "", GLOBAL);
-      } else {
-         expr1 = convert_ident (expr1, "", LOCAL);
-      }
+   expr1 = convert_expr (expr1, global);
+   expr2 = convert_expr (expr2, global);
+
+   if (is_conditional) {
+      string type = converted_type ("bool");
+      string register_cat = reg_category (type);
+      fprintf (outfile, "%*s%s%s = %s %s %s;\n", depth * INDENT, "",
+            type.c_str(), register_cat.c_str(), expr1.c_str(),
+            binop.c_str(), expr2.c_str());
+
+      return register_cat;
+   } else {
+      string type = check_expr (node->children[2], types, global);
+      string register_cat = reg_category (type);
+      type = converted_type (type);
+      fprintf (outfile, "%*s%s%s = %s %s %s;\n", depth * INDENT, "",
+            type.c_str(), register_cat.c_str(), expr1.c_str(),
+            binop.c_str(), expr2.c_str());
+
+      return register_cat;
    }
-   if (strcmp (global->lookup_oil(expr2).c_str(), "") != 0) {
-      if (global->is_global (expr2)) {
-         expr2 = convert_ident (expr2, "", GLOBAL);
-      } else {
-         expr2 = convert_ident (expr2, "", LOCAL);
-      }
-   }
-
-   fprintf (outfile, "%*s%s%s = %s %s %s;\n", depth * INDENT, "",
-         type.c_str(), register_cat.c_str(), expr1.c_str(),
-         binop.c_str(), expr2.c_str());
-
-   return register_cat;
 }
 
 /*
@@ -243,19 +264,44 @@ string oil_call (astree* node) {
    return convert_ident (ident_name, "", GLOBAL);
 }
 
+string oil_unop (FILE* outfile, astree* node, SymbolTable* types,
+      SymbolTable* global, int category, int depth) {
+   astree* unop_check = node->children[0];
+
+   if (strcmp ((char *)get_yytname (unop_check->symbol),
+         "TOK_ORD") == 0) {
+      string ord = oil_expr (outfile, node->children[0]->children[0],
+            types, global, category, depth);
+
+      return "(int)" + ord;
+   } else if (strcmp ((char *)get_yytname (unop_check->symbol),
+         "TOK_CHR") == 0) {
+      string chr = oil_expr (outfile, node->children[0]->children[0],
+            types, global, category, depth);
+
+      return "ubyte" + chr;
+   }
+
+   string unop = "(";
+   unop.append (unop_check->lexinfo->c_str());
+   unop.append (oil_expr (outfile, node->children[0]->children[0],
+         types, global, category, depth));
+   return unop + ")";
+}
+
 /*
- * Returns the type of the expression passed.
+ * Returns the name of the expression passed.
  */
 string oil_expr (FILE* outfile, astree* node, SymbolTable* types,
       SymbolTable* global, int category, int depth) {
    if (strcmp ((char *)get_yytname (node->symbol),
          "TOK_BINOP") == 0) {
       return oil_binop(outfile, node, types, global, category, depth);
-   }/*
+   }
    if (strcmp ((char *)get_yytname (node->symbol),
          "TOK_UNOP") == 0) {
-      return oil_unop(node, types, global);
-   }
+      return oil_unop(outfile, node, types, global, category, depth);
+   }/*
    if (strcmp ((char *)get_yytname (node->symbol),
          "TOK_ALLOCATOR") == 0) {
       return oil_allocator(node, global, category);
@@ -283,7 +329,6 @@ string oil_expr (FILE* outfile, astree* node, SymbolTable* types,
 
 void traverse_oil (FILE* outfile, astree* root, SymbolTable* types,
       SymbolTable* global, int depth, int category) {
-   //if (root == NULL) return;
 
    int cmp_vardecl = strcmp ((char *)get_yytname (root->symbol),
          "TOK_VARDECL") == 0;
@@ -291,10 +336,12 @@ void traverse_oil (FILE* outfile, astree* root, SymbolTable* types,
          "TOK_BINOP") == 0;
    int cmp_call = strcmp ((char *)get_yytname (root->symbol),
          "TOK_CALL") == 0;
-   /*int cmp_while = strcmp ((char *)get_yytname (root->symbol),
+   int cmp_block = strcmp ((char *)get_yytname (root->symbol),
+         "TOK_BLOCK") == 0;
+   int cmp_while = strcmp ((char *)get_yytname (root->symbol),
          "TOK_WHILE") == 0;
-   int cmp_if = strcmp ((char *)get_yytname (root->symbol),
-         "TOK_IF") == 0;
+   /*int cmp_if = strcmp ((char *)get_yytname (root->symbol),
+            "TOK_IF") == 0;
    int cmp_ifelse = strcmp ((char *)get_yytname (root->symbol),
          "TOK_IFELSE") == 0;*/
 
@@ -315,12 +362,16 @@ void traverse_oil (FILE* outfile, astree* root, SymbolTable* types,
 
       if (cmp_alloc) {
          string reg_cat = reg_category ("*");
+
          fprintf (outfile,
                "%*sstruct %s *%s = xcalloc (1, sizeof (struct %s));\n",
                depth * INDENT, "", type.c_str(),
                reg_cat.c_str(), type.c_str());
-         fprintf (outfile, "%*s%s = %s;\n", depth * INDENT, "",
+         fprintf (outfile, "%*s%s = *%s;\n", depth * INDENT, "",
                converted_name.c_str(), reg_cat.c_str());
+
+         // Map the variable name to the created struct pointer
+         struct_map[name] = reg_cat;
       } else if (cmp_newarray) {
          if (alloc->children.size() == 2) {
             string reg_cat = reg_category (type);
@@ -342,10 +393,50 @@ void traverse_oil (FILE* outfile, astree* root, SymbolTable* types,
                converted_type (type).c_str(),
                converted_name.c_str(), expr.c_str());
       }
-      /*} else if (cmp_while || cmp_if || cmp_ifelse) {
-      table = table->enterBlock();
-      root->blockNum = table->N - 1;*/
-   } else if (cmp_binop) {
+   } else if (cmp_block) {
+      astree* check_child = root->children[0];
+      if (strcmp ((char *)get_yytname (check_child->symbol),
+            "TOK_IF") == 0) {
+         string expr = oil_expr (outfile, check_child->children[0],
+               types, global, category, depth);
+
+         expr = convert_expr(expr, global);
+         fprintf (outfile, "%*sif (!%s) goto fi_%d;\n",
+               (depth - 1) * INDENT, "", expr.c_str(), ifelse_counter);
+
+         // Traverse through statements within if block
+         for (size_t child = 1; child < check_child->children.size();
+               ++child) {
+            traverse_oil (outfile, check_child->children[child], types,
+                  global, depth + 1, LOCAL);
+         }
+
+         fprintf (outfile, "%*sfi_%d:;\n",
+               (depth - 1) * INDENT, "", ifelse_counter++);
+      }
+   } else if (cmp_while) {
+      fprintf (outfile, "%*swhile_%d:;\n",
+            (depth - 1) * INDENT, "", while_counter++);
+
+      string expr = oil_expr (outfile, root->children[0],
+            types, global, category, depth);
+      expr = convert_expr (expr, global);
+
+      fprintf (outfile, "%*sif (!%s) goto break_%d;\n",
+            depth * INDENT, "", expr.c_str(), while_counter);
+      // Traverse through statements within while block
+      astree* block = root->children[1];
+      for (size_t child = 0; child < block->children.size();
+            ++child) {
+         traverse_oil (outfile, block->children[child], types,
+               global, depth + 1, LOCAL);
+      }
+
+      fprintf (outfile, "%*sgoto while_%d;\n",
+            (depth + 1) * INDENT, "", while_counter - 1);
+      fprintf (outfile, "%*sbreak_%d:;\n",
+            (depth - 1) * INDENT, "", while_counter);
+   }else if (cmp_binop) {
       astree* binop_sym = root->children[1];
       astree* expr1node = root->children[0];
       astree* expr2node = root->children[2];
@@ -356,20 +447,8 @@ void traverse_oil (FILE* outfile, astree* root, SymbolTable* types,
       string expr2 = oil_expr (outfile, expr2node, types, global,
             category, depth);
 
-      if (strcmp (global->lookup_oil(expr1).c_str(), "") != 0) {
-         if (global->is_global (expr1)) {
-            expr1 = convert_ident (expr1, "", GLOBAL);
-         } else {
-            expr1 = convert_ident (expr1, "", LOCAL);
-         }
-      }
-      if (strcmp (global->lookup_oil(expr2).c_str(), "") != 0) {
-         if (global->is_global (expr2)) {
-            expr2 = convert_ident (expr2, "", GLOBAL);
-         } else {
-            expr2 = convert_ident (expr2, "", LOCAL);
-         }
-      }
+      expr1 = convert_expr(expr1, global);
+      expr2 = convert_expr(expr2, global);
 
       // If +,-,*,/ then assign this to a temporary variable
       if (strcmp (binop_sym->lexinfo->c_str(), "=") == 0) {
@@ -391,22 +470,29 @@ void traverse_oil (FILE* outfile, astree* root, SymbolTable* types,
             fn_call.c_str());
       // If the call has parameters
       if (root->children.size() >= 2) {
-         for (size_t size = 1; size < root->children.size(); size++) {
-            string expr = oil_expr (outfile, root->children[size],
-                  types, global, category, depth);
+         string expr = oil_expr (outfile, root->children[1],
+               types, global, category, depth);
 
-            if (strcmp (global->lookup_oil(expr).c_str(), "") != 0) {
-               if (global->is_global (expr)) {
-                  expr = convert_ident (expr, "", GLOBAL);
-               } else {
-                  expr = convert_ident (expr, "", LOCAL);
+         expr = convert_expr(expr, global);
+         fprintf (outfile, "%s", expr.c_str());
+
+         // Check if there are more
+         astree* expr_seq = root->children[1];
+         if (expr_seq->children.size() > 1) {
+            fprintf (outfile, ", ");
+
+            for (size_t size = 1; size < expr_seq->children.size();
+                  size++) {
+               string expr = oil_expr (outfile,
+                     expr_seq->children[size], types, global, category,
+                     depth);
+
+               expr = convert_expr(expr, global);
+               fprintf (outfile, "%s", expr.c_str());
+
+               if (size < expr_seq->children.size() - 1) {
+                  fprintf (outfile, ", ");
                }
-            }
-
-            fprintf (outfile, "%s", expr.c_str());
-
-            if (size < root->children.size() - 1) {
-               fprintf (outfile, ", ");
             }
          }
       }
@@ -487,6 +573,14 @@ void generate_oil_func (FILE* outfile, astree* root, SymbolTable* types,
    }
 }
 
+bool is_struct (string name, SymbolTable* types) {
+   if (strcmp (types->lookup_oil(name).c_str(), "") != 0) {
+      return true;
+   }
+
+   return false;
+}
+
 void generate_oil (FILE* outfile, astree* root, SymbolTable* types,
       SymbolTable* global) {
    fprintf (outfile, "#define __OCLIB_C__\n"
@@ -517,9 +611,15 @@ void generate_oil (FILE* outfile, astree* root, SymbolTable* types,
 
       for (it = mapping.begin(); it != mapping.end(); ++it) {
          if (it->second.find("(") == std::string::npos) {
-            fprintf (outfile, "\n%s%s;",
-                  converted_type (it->second).c_str(),
-                  convert_ident (it->first, "",  GLOBAL).c_str());
+            if (is_struct (it->second, types)) {
+               fprintf (outfile, "\nstruct %s%s;",
+                     converted_type (it->second).c_str(),
+                     convert_ident (it->first, "",  GLOBAL).c_str());
+            } else {
+               fprintf (outfile, "\n%s%s;",
+                     converted_type (it->second).c_str(),
+                     convert_ident (it->first, "",  GLOBAL).c_str());
+            }
          }
       }
 
