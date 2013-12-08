@@ -340,10 +340,10 @@ void traverse_oil (FILE* outfile, astree* root, SymbolTable* types,
          "TOK_BLOCK") == 0;
    int cmp_while = strcmp ((char *)get_yytname (root->symbol),
          "TOK_WHILE") == 0;
-   /*int cmp_if = strcmp ((char *)get_yytname (root->symbol),
-            "TOK_IF") == 0;
+   int cmp_if = strcmp ((char *)get_yytname (root->symbol),
+         "TOK_IF") == 0;
    int cmp_ifelse = strcmp ((char *)get_yytname (root->symbol),
-         "TOK_IFELSE") == 0;*/
+         "TOK_IFELSE") == 0;
 
    if (cmp_vardecl) {
       astree* alloc = root->children[2];
@@ -394,26 +394,80 @@ void traverse_oil (FILE* outfile, astree* root, SymbolTable* types,
                converted_name.c_str(), expr.c_str());
       }
    } else if (cmp_block) {
-      astree* check_child = root->children[0];
-      if (strcmp ((char *)get_yytname (check_child->symbol),
-            "TOK_IF") == 0) {
-         string expr = oil_expr (outfile, check_child->children[0],
-               types, global, category, depth);
-
-         expr = convert_expr(expr, global);
-         fprintf (outfile, "%*sif (!%s) goto fi_%d;\n",
-               (depth - 1) * INDENT, "", expr.c_str(), ifelse_counter);
-
-         // Traverse through statements within if block
-         for (size_t child = 1; child < check_child->children.size();
-               ++child) {
-            traverse_oil (outfile, check_child->children[child], types,
-                  global, depth + 1, LOCAL);
-         }
-
-         fprintf (outfile, "%*sfi_%d:;\n",
-               (depth - 1) * INDENT, "", ifelse_counter++);
+      // Traverse through statements within block
+      for (size_t child = 0; child < root->children.size();
+            ++child) {
+         traverse_oil (outfile, root->children[child], types,
+               global, depth, LOCAL);
       }
+   } else if (cmp_if) {
+      int local_counter = ifelse_counter;
+      string expr = oil_expr (outfile, root->children[0],
+            types, global, category, depth);
+
+      expr = convert_expr(expr, global);
+      fprintf (outfile, "%*sif (!%s) goto fi_%d;\n",
+            (depth) * INDENT, "", expr.c_str(), ifelse_counter++);
+
+      if (global->enter_block (root->blockNum) != NULL) {
+         global = global->enter_block(root->blockNum);
+      }
+
+      // Traverse through statements within if block
+      for (size_t child = 1; child < root->children.size();
+            ++child) {
+         traverse_oil (outfile, root->children[child], types,
+               global, depth, LOCAL);
+      }
+
+      if (global->getParent() != NULL) {
+         global = global->getParent();
+      }
+
+      fprintf (outfile, "%*sfi_%d:;\n",
+            (depth - 1) * INDENT, "", local_counter);
+   } else if (cmp_ifelse) {
+      int local_counter = ifelse_counter;
+      string expr = oil_expr (outfile, root->children[0],
+            types, global, category, depth);
+
+      expr = convert_expr(expr, global);
+      fprintf (outfile, "%*sif (!%s) goto else_%d;\n",
+            (depth) * INDENT, "", expr.c_str(), ifelse_counter++);
+
+      if (global->enter_block (root->blockNum) != NULL) {
+         global = global->enter_block(root->blockNum);
+      }
+
+      size_t last_stmt = root->children.size() - 1;
+      // Traverse through statements within if block
+      for (size_t child = 1; child < last_stmt; ++child) {
+         traverse_oil (outfile, root->children[child], types,
+               global, depth, LOCAL);
+      }
+
+      if (global->getParent() != NULL) {
+         global = global->getParent();
+      }
+
+      fprintf (outfile, "%*sgoto fi_%d;\n",
+            (depth) * INDENT, "", local_counter);
+      fprintf (outfile, "%*selse_%d:;\n",
+            (depth - 1) * INDENT, "", local_counter);
+
+      astree* else_stmt = root->children[last_stmt];
+      if (global->enter_block (else_stmt->blockNum) != NULL) {
+         global = global->enter_block(else_stmt->blockNum);
+      }
+
+      traverse_oil (outfile, else_stmt, types, global, depth, LOCAL);
+
+      if (global->getParent() != NULL) {
+         global = global->getParent();
+      }
+
+      fprintf (outfile, "%*sfi_%d:;\n",
+            (depth - 1) * INDENT, "", local_counter);
    } else if (cmp_while) {
       fprintf (outfile, "%*swhile_%d:;\n",
             (depth - 1) * INDENT, "", while_counter++);
@@ -424,12 +478,21 @@ void traverse_oil (FILE* outfile, astree* root, SymbolTable* types,
 
       fprintf (outfile, "%*sif (!%s) goto break_%d;\n",
             depth * INDENT, "", expr.c_str(), while_counter);
+
+      if (global->enter_block (root->blockNum) != NULL) {
+         global = global->enter_block(root->blockNum);
+      }
+
       // Traverse through statements within while block
       astree* block = root->children[1];
       for (size_t child = 0; child < block->children.size();
             ++child) {
          traverse_oil (outfile, block->children[child], types,
                global, depth + 1, LOCAL);
+      }
+
+      if (global->getParent() != NULL) {
+         global = global->getParent();
       }
 
       fprintf (outfile, "%*sgoto while_%d;\n",
@@ -499,9 +562,6 @@ void traverse_oil (FILE* outfile, astree* root, SymbolTable* types,
 
       fprintf (outfile, ");\n");
    }
-
-   /*if (cmp_while || cmp_if || cmp_ifelse)
-      global = global->getParent();*/
 }
 
 void traverse_ast (FILE* outfile, astree* root, SymbolTable* types,
