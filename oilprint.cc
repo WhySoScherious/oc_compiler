@@ -53,7 +53,8 @@ string reg_category (string type) {
       return reg;
    }
 
-   if (type.find ("*") != std::string::npos) {
+   if (type.find ("*") != std::string::npos ||
+         type.find ("[") != std::string::npos) {
       ostr << p_counter;
       string reg = "p" + ostr.str();
       p_counter++;
@@ -276,7 +277,12 @@ string oil_binop (FILE* outfile, astree* node, SymbolTable* types,
 
       return register_cat;
    } else {
-      string type = check_expr (node->children[2], types, global);
+      string type = check_expr (node->children[0], types, global);
+      size_t bracket_index = type.find_first_of('[');
+      if (bracket_index != std::string::npos) {
+         type = type.substr(0, bracket_index);
+      }
+
       string register_cat = reg_category (type);
       type = converted_type (type);
       fprintf (outfile, "%*s%s %s = %s %s %s;\n", depth * INDENT, "",
@@ -448,8 +454,8 @@ void traverse_oil (FILE* outfile, astree* root, SymbolTable* types,
                   "%*s%s %s = xcalloc (%s, sizeof (%s));\n",
                   depth * INDENT, "", con_type.c_str(),
                   reg_cat.c_str(), operand.c_str(), con_type.c_str());
-         } else {
-
+            fprintf (outfile, "%*s%s = %s;\n", depth * INDENT, "",
+                  converted_name.c_str(), reg_cat.c_str());
          }
       } else if (depth == 1 && category == GLOBAL) {
          fprintf (outfile, "%*s%s = %s;\n", depth * INDENT, "",
