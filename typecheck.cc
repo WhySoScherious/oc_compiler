@@ -462,7 +462,7 @@ void typecheck_rec (astree* node, SymbolTable* types,
 
    for (size_t child = 0; child < node->children.size();
          ++child) {
-      SymbolTable* childBlock;
+      SymbolTable* childBlock = global;
       if (strcmp ((char *)get_yytname (node->symbol),
             "TOK_FUNCTION") == 0) {
          int ident_index = 1;
@@ -474,7 +474,7 @@ void typecheck_rec (astree* node, SymbolTable* types,
          }
 
          string fn_name = node->children[ident_index]->lexinfo->c_str();
-         global = global->lookup_param(fn_name, node->linenr);
+         childBlock = childBlock->lookup_param(fn_name, node->linenr);
       } else if (strcmp ((char *)get_yytname (node->symbol),
             "TOK_IF") == 0 ||
             strcmp ((char *)get_yytname (node->symbol),
@@ -482,19 +482,12 @@ void typecheck_rec (astree* node, SymbolTable* types,
                   strcmp ((char *)get_yytname (node->symbol),
                         "TOK_IFELSE") == 0) {
          childBlock = global->enter_block (node->blockNum);
-         if (childBlock != NULL)
-            global = childBlock;
+         if (childBlock == NULL)
+            childBlock = global;
       }
 
-      typecheck_rec (node->children[child], types, global, depth + 1);
-
-      if (childBlock != NULL &&
-            (strcmp ((char *)get_yytname (node->symbol),
-            "TOK_FUNCTION") == 0 ||
-            strcmp ((char *)get_yytname (node->symbol),
-                  "TOK_WHILE") == 0)) {
-         global = global->getParent();
-      }
+      typecheck_rec (node->children[child], types, childBlock,
+            depth + 1);
    }
 
    if (strcmp ((char *)get_yytname (node->symbol),
