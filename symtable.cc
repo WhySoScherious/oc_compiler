@@ -195,9 +195,8 @@ SymbolTable* SymbolTable::lookup_param_oil(string type) {
    return NULL;
 }
 
-// Look up name in this block and if found, return true.
-// Otherwise, it's a global variable
-// Returns false if not found
+// Look up name in the global block and if found, return true.
+// Otherwise, return false
 bool SymbolTable::is_global (string name) {
    if (this->parent != NULL) {
       // look up the symbol in the surrounding scope
@@ -213,6 +212,26 @@ bool SymbolTable::is_global (string name) {
       // Return "" if the global symbol table has no entry
       return false;
    }
+}
+
+// Look up name in the local block and if found, return true.
+// Otherwise, return false
+bool SymbolTable::is_local (string name) {
+   // Look up "name" in the identifier mapping of the current block
+   if (this->mapping.count(name) > 0 && this->getParent() != NULL) {
+      // If we found an entry, just return its type
+      return true;
+   }
+
+   // Otherwise, if there is a surrounding scope
+   if (this->parent != NULL) {
+      // look up the symbol in the surrounding scope
+      // and return its reported type
+      return this->parent->is_local (name);
+   }
+
+   // Return false if the global symbol table has no entry
+   return false;
 }
 
 // Enter the child block of the current SymbolTable*

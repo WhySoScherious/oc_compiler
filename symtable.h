@@ -90,6 +90,8 @@ public:
 
    bool is_global (string name);
 
+   bool is_local (string name);
+
    // Look up name in child block and return its type.
    //
    // Returns the empty string "" if variable was not found
